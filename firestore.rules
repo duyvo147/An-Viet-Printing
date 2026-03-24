@@ -1,0 +1,191 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Fields:
+    //   - uid: string (required)
+    //   - email: string (required, email format)
+    //   - displayName: string
+    //   - role: string (required, enum: ['admin', 'staff'])
+    //   - isApproved: bool (required)
+    //   - createdAt: timestamp
+    //
+    // Collection: orders
+    // Fields:
+    //   - customerName: string (required)
+    //   - totalAmount: number (required, positive)
+    //   - paidAmount: number
+    //   - debtAmount: number
+    //   - vatInvoiceCode: string
+    //   - status: string (required, enum: ['pending', 'processing', 'completed', 'cancelled'])
+    //   - paymentStatus: string (required, enum: ['unpaid', 'partial', 'paid'])
+    //   - createdBy: string (uid)
+    //   - createdAt: timestamp
+    //   - updatedAt: timestamp
+    //
+    // Collection: activity_logs
+    // Fields:
+    //   - userId: string (uid)
+    //   - userEmail: string
+    //   - action: string
+    //   - details: string
+    //   - timestamp: timestamp
+    //
+    // Collection: supplier_orders
+    // Fields:
+    //   - supplierName: string (required)
+    //   - supplierPhone: string
+    //   - supplierAddress: string
+    //   - supplierTaxId: string
+    //   - bankName: string
+    //   - bankAccountName: string
+    //   - bankAccountNumber: string
+    //   - totalAmount: number (required, positive)
+    //   - paidAmount: number
+    //   - debtAmount: number
+    //   - vatInvoiceCode: string
+    //   - materialType: string (required, enum: ['paper', 'ink', 'outsourcing', 'other'])
+    //   - status: string (required, enum: ['pending', 'received', 'cancelled'])
+    //   - paymentStatus: string (required, enum: ['unpaid', 'partial', 'paid'])
+    //   - createdBy: string (uid)
+    //   - createdAt: timestamp
+    //   - updatedAt: timestamp
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+         (request.auth.token.email == "voanhduy1993@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function isApprovedUser() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isApproved == true || isAdmin());
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    function isValidEmail(email) {
+      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    function isPositive(field) {
+      return request.resource.data[field] is number && request.resource.data[field] >= 0;
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+
+    function isValidUser(data) {
+      return hasRequiredFields(['uid', 'email', 'role', 'isApproved']) &&
+             data.uid is string &&
+             isValidEmail(data.email) &&
+             data.role in ['admin', 'staff'] &&
+             data.isApproved is bool;
+    }
+
+    function isValidOrder(data) {
+      return hasRequiredFields(['customerName', 'totalAmount', 'status', 'paymentStatus', 'createdBy']) &&
+             data.customerName is string && data.customerName.size() > 0 && data.customerName.size() < 200 &&
+             data.totalAmount is number && data.totalAmount >= 0 &&
+             data.status in ['pending', 'processing', 'completed', 'cancelled'] &&
+             data.paymentStatus in ['unpaid', 'partial', 'paid'] &&
+             data.createdBy is string;
+    }
+
+    function isValidActivityLog(data) {
+      return hasRequiredFields(['userId', 'action', 'timestamp']) &&
+             data.userId == request.auth.uid &&
+             data.action is string && data.action.size() > 0 && data.action.size() < 100 &&
+             data.timestamp is timestamp;
+    }
+
+    function isValidSupplierOrder(data) {
+      return hasRequiredFields(['supplierName', 'totalAmount', 'status', 'paymentStatus', 'createdBy', 'materialType']) &&
+             data.supplierName is string && data.supplierName.size() > 0 && data.supplierName.size() < 200 &&
+             data.totalAmount is number && data.totalAmount >= 0 &&
+             data.status in ['pending', 'received', 'cancelled'] &&
+             data.paymentStatus in ['unpaid', 'partial', 'paid'] &&
+             data.materialType in ['paper', 'ink', 'outsourcing', 'other'] &&
+             data.createdBy is string &&
+             (!('supplierPhone' in data) || data.supplierPhone is string) &&
+             (!('supplierAddress' in data) || data.supplierAddress is string) &&
+             (!('supplierTaxId' in data) || data.supplierTaxId is string) &&
+             (!('bankName' in data) || data.bankName is string) &&
+             (!('bankAccountName' in data) || data.bankAccountName is string) &&
+             (!('bankAccountNumber' in data) || data.bankAccountNumber is string) &&
+             (!('vatInvoiceCode' in data) || data.vatInvoiceCode is string);
+    }
+
+    // ===============================================================
+    // Match Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidUser(request.resource.data) && 
+                    (isOwner(userId) || isAdmin()) &&
+                    (request.resource.data.isApproved == false || isAdmin());
+      allow update: if isAuthenticated() && isValidUser(request.resource.data) && 
+                    (isAdmin() || 
+                     (isOwner(userId) && 
+                      request.resource.data.role == resource.data.role && 
+                      request.resource.data.isApproved == resource.data.isApproved));
+      allow delete: if isAdmin();
+    }
+
+    match /orders/{orderId} {
+      allow read: if isAuthenticated();
+      allow create: if isApprovedUser() && isValidOrder(request.resource.data) && 
+                    request.resource.data.createdBy == request.auth.uid;
+      allow update: if isApprovedUser() && isValidOrder(request.resource.data) && 
+                    (isAdmin() || isOwner(resource.data.createdBy));
+      allow delete: if isAdmin();
+    }
+
+    match /activity_logs/{logId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidActivityLog(request.resource.data);
+      allow update, delete: if false; // Logs are immutable
+    }
+
+    match /supplier_orders/{orderId} {
+      allow read: if isAuthenticated();
+      allow create: if isApprovedUser() && isValidSupplierOrder(request.resource.data) && 
+                    request.resource.data.createdBy == request.auth.uid;
+      allow update: if isApprovedUser() && isValidSupplierOrder(request.resource.data) && 
+                    (isAdmin() || isOwner(resource.data.createdBy));
+      allow delete: if isAdmin();
+    }
+
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
