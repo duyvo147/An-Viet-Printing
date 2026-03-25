@@ -311,7 +311,7 @@ const PrintModal = ({ order, type, onClose }: { order: Order, type: 'quote' | 'd
             <div className="flex justify-between items-start mb-10 border-b-2 border-indigo-600 pb-8">
               <div className="flex items-center gap-4">
                 <img 
-                  src="/logo-cong-ty-01.png" 
+                  src="/logo-cong-ty.png" 
                   alt="Logo Công ty" 
                   className="w-24 h-24 object-contain"
                   onError={(e) => {
