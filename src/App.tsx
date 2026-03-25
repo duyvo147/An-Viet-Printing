@@ -419,7 +419,7 @@ const PrintModal = ({ order, type, onClose }: { order: Order, type: 'quote' | 'd
   );
 };
 
-const OrderList = ({ orders, onEdit, title = 'Quản lý đơn hàng', userRole, users = [] }: { orders: Order[], onEdit: (o: Order) => void, title?: string, userRole?: string, users?: UserProfile[] }) => {
+const OrderList = ({ orders, onEdit, onDelete, title = 'Quản lý đơn hàng', userRole, users = [] }: { orders: Order[], onEdit: (o: Order) => void, onDelete?: (id: string) => void, title?: string, userRole?: string, users?: UserProfile[] }) => {
   const [filter, setFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState<OrderStatus | 'all'>('all');
   const [creatorFilter, setCreatorFilter] = useState<string | 'all'>('all');
@@ -624,6 +624,19 @@ const OrderList = ({ orders, onEdit, title = 'Quản lý đơn hàng', userRole,
                       >
                         Chi tiết
                       </button>
+                      {userRole === 'admin' && onDelete && (
+                        <button 
+                          onClick={() => {
+                            if (window.confirm('Bạn có chắc chắn muốn xóa đơn hàng này?')) {
+                              onDelete(order.id);
+                            }
+                          }}
+                          title="Xóa đơn hàng"
+                          className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -1832,6 +1845,19 @@ export default function App() {
     }
   };
 
+  const handleDeleteOrder = async (orderId: string) => {
+    const path = 'orders';
+    try {
+      const order = orders.find(o => o.id === orderId);
+      if (!order) return;
+
+      await deleteDoc(doc(db, path, orderId));
+      await logActivity('xóa đơn hàng', `Xóa đơn hàng ${order.orderCode || orderId} của ${order.customerName}`);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, path);
+    }
+  };
+
   const handleSaveSupplierOrder = async (data: any) => {
     const path = 'supplier_orders';
     try {
@@ -2037,6 +2063,7 @@ export default function App() {
                   <OrderList 
                     orders={orders} 
                     onEdit={(o) => { setEditingOrder(o); navigate('/orders/edit'); }} 
+                    onDelete={handleDeleteOrder}
                     userRole={profile?.role}
                     users={users}
                   />
@@ -2071,6 +2098,7 @@ export default function App() {
                     title="Quản lý công nợ"
                     orders={orders.filter(o => o.paymentStatus !== 'paid')} 
                     onEdit={(o) => { setEditingOrder(o); navigate('/orders/edit'); }} 
+                    onDelete={handleDeleteOrder}
                     userRole={profile?.role}
                     users={users}
                   />
