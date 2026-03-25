@@ -309,18 +309,7 @@ const PrintModal = ({ order, type, onClose }: { order: Order, type: 'quote' | 'd
         <div className="p-12 print:p-0">
           <div className="max-w-[800px] mx-auto bg-white">
             <div className="flex justify-between items-start mb-10 border-b-2 border-indigo-600 pb-8">
-              <div className="flex items-center gap-6">
-                <img 
-                  src="/brand-logo.png" 
-                  alt="Logo An Việt Solution" 
-                  className="h-24 w-auto object-contain print:h-20"
-                  onError={(e) => {
-                    const target = e.target as HTMLImageElement;
-                    if (!target.src.includes('storage.googleapis.com')) {
-                      target.src = 'https://storage.googleapis.com/static.antigravity.ai/assets/67e26697-7f28-409b-8919-06048e918c50.png';
-                    }
-                  }}
-                />
+              <div className="flex items-center">
                 <div className="flex-1">
                   <h2 className="text-xl font-black text-slate-900 uppercase leading-tight">Công ty TNHH TM-DV-SX An Việt Solution</h2>
                   <div className="text-sm text-slate-500 space-y-1 mt-1">
