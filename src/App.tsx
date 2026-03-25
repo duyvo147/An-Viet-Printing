@@ -309,7 +309,12 @@ const PrintModal = ({ order, type, onClose }: { order: Order, type: 'quote' | 'd
         <div className="p-12 print:p-0">
           <div className="max-w-[800px] mx-auto bg-white">
             <div className="flex justify-between items-start mb-10 border-b-2 border-indigo-600 pb-8">
-              <div className="flex items-center">
+              <div className="flex items-center gap-6">
+                <img 
+                  src="/logocongty.png" 
+                  alt="Logo An Việt Solution" 
+                  className="h-24 w-auto object-contain print:h-20"
+                />
                 <div>
                   <h2 className="text-xl font-black text-slate-900 uppercase leading-tight">Công ty TNHH TM-DV-SX An Việt Solution</h2>
                   <div className="text-sm text-slate-500 space-y-1 mt-1">
@@ -318,8 +323,8 @@ const PrintModal = ({ order, type, onClose }: { order: Order, type: 'quote' | 'd
                   </div>
                 </div>
               </div>
-              <div className="text-right">
-                <h1 className="text-3xl font-black text-indigo-600 uppercase mb-2">
+              <div className="text-right flex-shrink-0">
+                <h1 className="text-3xl font-black text-indigo-600 uppercase mb-2 whitespace-nowrap">
                   {type === 'quote' ? 'BÁO GIÁ' : 'PHIẾU GIAO HÀNG'}
                 </h1>
                 <p className="text-slate-900 font-mono font-bold">{order.orderCode || `AVP-OLD-${order.id.slice(-4).toUpperCase()}`}</p>
