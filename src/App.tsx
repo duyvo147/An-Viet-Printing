@@ -309,17 +309,7 @@ const PrintModal = ({ order, type, onClose }: { order: Order, type: 'quote' | 'd
         <div className="p-12 print:p-0">
           <div className="max-w-[800px] mx-auto bg-white">
             <div className="flex justify-between items-start mb-10 border-b-2 border-indigo-600 pb-8">
-              <div className="flex items-center gap-4">
-                <img 
-                  src="/logocongty.png" 
-                  alt="Logo Công ty" 
-                  className="w-24 h-24 object-contain"
-                  onError={(e) => {
-                    // Fallback if logo is not uploaded yet
-                    (e.target as HTMLImageElement).src = 'https://placehold.co/200x200?text=LOGO';
-                  }}
-                  referrerPolicy="no-referrer"
-                />
+              <div className="flex items-center">
                 <div>
                   <h2 className="text-xl font-black text-slate-900 uppercase leading-tight">Công ty TNHH TM-DV-SX An Việt Solution</h2>
                   <div className="text-sm text-slate-500 space-y-1 mt-1">
@@ -341,7 +331,6 @@ const PrintModal = ({ order, type, onClose }: { order: Order, type: 'quote' | 'd
               <div>
                 <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Khách hàng</h3>
                 <p className="text-lg font-bold text-slate-900">{order.customerName}</p>
-                <p className="text-slate-600 font-mono text-sm font-bold text-indigo-600">{order.orderCode || `AVP-OLD-${order.id.slice(-4).toUpperCase()}`}</p>
                 <p className="text-slate-600">{order.customerPhone}</p>
                 {order.customerAddress && <p className="text-slate-600 text-sm mt-1">{order.customerAddress}</p>}
                 {order.customerTaxId && <p className="text-slate-600 text-sm mt-1">MST: {order.customerTaxId}</p>}
