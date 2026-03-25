@@ -460,6 +460,10 @@ const OrderList = ({ orders, onEdit, title = 'Quản lý đơn hàng', userRole,
     return matchesSearch && matchesStatus && matchesCreator && matchesDate;
   });
 
+  const totalDebt = useMemo(() => {
+    return filteredOrders.reduce((sum, order) => sum + (order.debtAmount || 0), 0);
+  }, [filteredOrders]);
+
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -532,6 +536,12 @@ const OrderList = ({ orders, onEdit, title = 'Quản lý đơn hàng', userRole,
               </button>
             )}
           </div>
+          {title === 'Quản lý công nợ' && (
+            <div className="ml-auto flex items-center gap-2 bg-rose-50 px-3 py-1.5 rounded-lg border border-rose-100">
+              <span className="text-xs font-bold text-rose-400 uppercase tracking-wider">Tổng công nợ chưa thu:</span>
+              <span className="text-sm font-bold text-rose-600">{formatCurrency(totalDebt)}</span>
+            </div>
+          )}
         </div>
       </div>
 
