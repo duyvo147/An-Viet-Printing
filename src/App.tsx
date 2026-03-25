@@ -221,7 +221,7 @@ const Dashboard = ({ orders, supplierOrders, userRole, users = [] }: { orders: O
         <div className="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
           <h2 className="text-lg font-bold text-slate-900 mb-6">Biểu đồ thu chi</h2>
           <div className="h-[300px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
               <AreaChart data={stats.chartData}>
                 <defs>
                   <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
@@ -311,11 +311,17 @@ const PrintModal = ({ order, type, onClose }: { order: Order, type: 'quote' | 'd
             <div className="flex justify-between items-start mb-10 border-b-2 border-indigo-600 pb-8">
               <div className="flex items-center gap-6">
                 <img 
-                  src="/logocongty.png" 
+                  src="/brand-logo.png" 
                   alt="Logo An Việt Solution" 
                   className="h-24 w-auto object-contain print:h-20"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    if (!target.src.includes('storage.googleapis.com')) {
+                      target.src = 'https://storage.googleapis.com/static.antigravity.ai/assets/67e26697-7f28-409b-8919-06048e918c50.png';
+                    }
+                  }}
                 />
-                <div>
+                <div className="flex-1">
                   <h2 className="text-xl font-black text-slate-900 uppercase leading-tight">Công ty TNHH TM-DV-SX An Việt Solution</h2>
                   <div className="text-sm text-slate-500 space-y-1 mt-1">
                     <p>Xưởng in: 103A Quách Đình Bảo, P.Phú Thạnh, TP.HCM</p>
@@ -323,8 +329,8 @@ const PrintModal = ({ order, type, onClose }: { order: Order, type: 'quote' | 'd
                   </div>
                 </div>
               </div>
-              <div className="text-right flex-shrink-0">
-                <h1 className="text-3xl font-black text-indigo-600 uppercase mb-2 whitespace-nowrap">
+              <div className="text-right flex-shrink-0 ml-6">
+                <h1 className="text-2xl font-black text-indigo-600 uppercase mb-2 whitespace-nowrap">
                   {type === 'quote' ? 'BÁO GIÁ' : 'PHIẾU GIAO HÀNG'}
                 </h1>
                 <p className="text-slate-900 font-mono font-bold">{order.orderCode || `AVP-OLD-${order.id.slice(-4).toUpperCase()}`}</p>
@@ -1697,6 +1703,7 @@ const UserManagement = ({ users, onUpdateRole, onApprove, onDelete }: {
 
 export default function App() {
   const [user, setUser] = useState<FirebaseUser | null>(null);
+  const [isFirebaseBlocked, setIsFirebaseBlocked] = useState(false);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [orders, setOrders] = useState<Order[]>([]);
@@ -1710,39 +1717,52 @@ export default function App() {
   const location = useLocation();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (u) => {
+    const unsubscribe = onAuthStateChanged(auth, (u) => {
       setUser(u);
       if (u) {
         // Fetch or create profile
-        const profileDoc = await getDoc(doc(db, 'users', u.uid));
-        const isAdmin = u.email === 'voanhduy1993@gmail.com';
-        
-        if (profileDoc.exists()) {
-          const data = profileDoc.data() as UserProfile;
-          // Ensure admin email always has admin role and is approved
-          if (isAdmin && (!data.isApproved || data.role !== 'admin')) {
-            const updatedProfile = { ...data, isApproved: true, role: 'admin' as const };
-            await updateDoc(doc(db, 'users', u.uid), { isApproved: true, role: 'admin' });
-            setProfile(updatedProfile);
-          } else {
-            setProfile(data);
+        const fetchProfile = async () => {
+          try {
+            const profileDoc = await getDoc(doc(db, 'users', u.uid));
+            const isAdmin = u.email === 'voanhduy1993@gmail.com';
+            
+            if (profileDoc.exists()) {
+              const data = profileDoc.data() as UserProfile;
+              // Ensure admin email always has admin role and is approved
+              if (isAdmin && (!data.isApproved || data.role !== 'admin')) {
+                const updatedProfile = { ...data, isApproved: true, role: 'admin' as const };
+                await updateDoc(doc(db, 'users', u.uid), { isApproved: true, role: 'admin' });
+                setProfile(updatedProfile);
+              } else {
+                setProfile(data);
+              }
+            } else {
+              const newProfile: UserProfile = {
+                uid: u.uid,
+                email: u.email!,
+                displayName: u.displayName || '',
+                role: isAdmin ? 'admin' : 'staff',
+                isApproved: isAdmin,
+                createdAt: Timestamp.now()
+              };
+              await setDoc(doc(db, 'users', u.uid), newProfile);
+              setProfile(newProfile);
+            }
+          } catch (error: any) {
+            console.error('Profile fetch error:', error);
+            if (error.message.includes('blocked') || error.message.includes('failed to fetch')) {
+              setIsFirebaseBlocked(true);
+            }
           }
-        } else {
-          const newProfile: UserProfile = {
-            uid: u.uid,
-            email: u.email!,
-            displayName: u.displayName || '',
-            role: isAdmin ? 'admin' : 'staff',
-            isApproved: isAdmin,
-            createdAt: Timestamp.now()
-          };
-          await setDoc(doc(db, 'users', u.uid), newProfile);
-          setProfile(newProfile);
-        }
+        };
+        fetchProfile();
       } else {
         setProfile(null);
       }
       setLoading(false);
+    }, (error: any) => {
+      console.error('Auth state change error:', error);
+      if (error.message.includes('blocked')) setIsFirebaseBlocked(true);
     });
     return unsubscribe;
   }, []);
@@ -1763,21 +1783,33 @@ export default function App() {
     const qOrders = query(collection(db, 'orders'), orderBy('createdAt', 'desc'));
     const unsubOrders = onSnapshot(qOrders, (snapshot) => {
       setOrders(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Order)));
+    }, (error: any) => {
+      console.error('Orders snapshot error:', error);
+      if (error.message.includes('blocked')) setIsFirebaseBlocked(true);
     });
 
     const qLogs = query(collection(db, 'activity_logs'), orderBy('timestamp', 'desc'), limit(50));
     const unsubLogs = onSnapshot(qLogs, (snapshot) => {
       setLogs(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as ActivityLog)));
+    }, (error: any) => {
+      console.error('Logs snapshot error:', error);
+      if (error.message.includes('blocked')) setIsFirebaseBlocked(true);
     });
 
     const qUsers = query(collection(db, 'users'));
     const unsubUsers = onSnapshot(qUsers, (snapshot) => {
       setUsers(snapshot.docs.map(d => d.data() as UserProfile));
+    }, (error: any) => {
+      console.error('Users snapshot error:', error);
+      if (error.message.includes('blocked')) setIsFirebaseBlocked(true);
     });
 
     const qSuppliers = query(collection(db, 'supplier_orders'), orderBy('createdAt', 'desc'));
     const unsubSuppliers = onSnapshot(qSuppliers, (snapshot) => {
       setSupplierOrders(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as SupplierOrder)));
+    }, (error: any) => {
+      console.error('Suppliers snapshot error:', error);
+      if (error.message.includes('blocked')) setIsFirebaseBlocked(true);
     });
 
     return () => { unsubOrders(); unsubLogs(); unsubUsers(); unsubSuppliers(); };
@@ -1999,6 +2031,11 @@ export default function App() {
   return (
     <ErrorBoundary>
       <div className="min-h-screen bg-slate-50 flex">
+        {isFirebaseBlocked && (
+          <div className="fixed top-0 left-0 right-0 bg-rose-500 text-white p-2 text-center text-sm font-bold animate-pulse z-[9999]">
+            Cảnh báo: Kết nối tới cơ sở dữ liệu bị chặn. Vui lòng tắt trình chặn quảng cáo (Ad-blocker) để ứng dụng hoạt động bình thường.
+          </div>
+        )}
           {/* Sidebar */}
           <aside className={cn(
             "fixed inset-y-0 left-0 z-50 w-72 bg-white border-r border-slate-100 transition-transform duration-300 lg:relative lg:translate-x-0",
