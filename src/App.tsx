@@ -1839,7 +1839,7 @@ export default function App() {
         await logActivity('tạo đơn hàng mới', `Đơn hàng mới ${orderCode} cho ${data.customerName}`);
       }
       setEditingOrder(null);
-      navigate('/orders');
+      navigate(-1);
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, path);
     }
@@ -1873,7 +1873,7 @@ export default function App() {
         await logActivity('tạo đơn mua mới', `Tạo đơn mua mới từ ${data.supplierName}`);
       }
       setEditingSupplierOrder(null);
-      navigate('/suppliers');
+      navigate(-1);
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, path);
     }
