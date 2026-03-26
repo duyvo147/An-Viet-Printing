@@ -77,3 +77,28 @@ export interface SupplierOrder {
   createdAt: Timestamp;
   updatedAt: Timestamp;
 }
+
+export interface PaperType {
+  id: string;
+  name: string;
+  pricePerA4: number;
+}
+
+export interface PostProcessingType {
+  id: string;
+  name: string;
+  pricePerM2?: number;
+  pricePerUnit?: number;
+  type: 'm2' | 'unit';
+}
+
+export interface PrintConfig {
+  basePrice1Side: number;
+  basePrice2Sides: number;
+  tier1Threshold: number;
+  tier1Discount: number;
+  tier2Threshold: number;
+  tier2Discount: number;
+  tier3Threshold: number;
+  tier3Discount: number;
+}

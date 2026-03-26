@@ -89,6 +89,45 @@
         "updatedAt": { "type": "string", "format": "date-time" }
       },
       "required": ["supplierName", "totalAmount", "status", "paymentStatus", "createdBy"]
+    },
+    "PaperType": {
+      "title": "PaperType",
+      "description": "Configurable paper types and prices",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "pricePerA4": { "type": "number" }
+      },
+      "required": ["id", "name", "pricePerA4"]
+    },
+    "PostProcessingType": {
+      "title": "PostProcessingType",
+      "description": "Configurable post-processing options",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "pricePerM2": { "type": "number" },
+        "pricePerUnit": { "type": "number" }
+      },
+      "required": ["id", "name"]
+    },
+    "PrintConfig": {
+      "title": "PrintConfig",
+      "description": "General printing price configuration",
+      "type": "object",
+      "properties": {
+        "basePrice1Side": { "type": "number" },
+        "basePrice2Sides": { "type": "number" },
+        "tier1Threshold": { "type": "number" },
+        "tier1Discount": { "type": "number" },
+        "tier2Threshold": { "type": "number" },
+        "tier2Discount": { "type": "number" },
+        "tier3Threshold": { "type": "number" },
+        "tier3Discount": { "type": "number" }
+      },
+      "required": ["basePrice1Side", "basePrice2Sides"]
     }
   },
   "firestore": {
@@ -107,6 +146,18 @@
     "/supplier_orders/{orderId}": {
       "schema": "SupplierOrder",
       "description": "Supplier purchase order documents"
+    },
+    "/settings_paper/{paperId}": {
+      "schema": "PaperType",
+      "description": "Paper type settings"
+    },
+    "/settings_processing/{procId}": {
+      "schema": "PostProcessingType",
+      "description": "Post-processing settings"
+    },
+    "/settings_print_config/main": {
+      "schema": "PrintConfig",
+      "description": "Main printing configuration"
     }
   }
 }

@@ -5,6 +5,7 @@
 
 import React, { useEffect, useState, useMemo } from 'react';
 import { Routes, Route, Navigate, Link, useLocation, useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'motion/react';
 import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { collection, onSnapshot, query, orderBy, doc, getDoc, setDoc, addDoc, Timestamp, serverTimestamp, where, limit, updateDoc, deleteDoc } from 'firebase/firestore';
 import { 
@@ -29,7 +30,9 @@ import {
   User as UserIcon,
   Receipt,
   Truck,
-  Trash2
+  Trash2,
+  Calculator,
+  Settings
 } from 'lucide-react';
 import { 
   BarChart, 
@@ -51,7 +54,7 @@ import { twMerge } from 'tailwind-merge';
 
 import { auth, db, loginWithGoogle, logout, handleFirestoreError, OperationType } from './firebase';
 import ErrorBoundary from './components/ErrorBoundary';
-import { UserProfile, Order, ActivityLog, OrderStatus, PaymentStatus, OrderItem, SupplierOrder, SupplierOrderStatus, MaterialType } from './types';
+import { UserProfile, Order, ActivityLog, OrderStatus, PaymentStatus, OrderItem, SupplierOrder, SupplierOrderStatus, MaterialType, PaperType, PostProcessingType, PrintConfig } from './types';
 
 // --- Utility ---
 function cn(...inputs: ClassValue[]) {
@@ -64,20 +67,27 @@ const formatCurrency = (amount: number) => {
 
 // --- Components ---
 
-const SidebarItem = ({ to, icon: Icon, label, active }: { to: string, icon: any, label: string, active?: boolean }) => (
-  <Link
-    to={to}
-    className={cn(
-      "flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 group",
-      active 
-        ? "bg-indigo-600 text-white shadow-lg shadow-indigo-200" 
-        : "text-slate-600 hover:bg-slate-100 hover:text-indigo-600"
-    )}
-  >
-    <Icon className={cn("w-5 h-5", active ? "text-white" : "text-slate-400 group-hover:text-indigo-600")} />
-    <span className="font-medium">{label}</span>
-  </Link>
-);
+const SidebarItem = ({ to, icon: Icon, label, active, onClick }: { to?: string, icon: any, label: string, active?: boolean, onClick?: () => void }) => {
+  const content = (
+    <div
+      className={cn(
+        "flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 group cursor-pointer",
+        active 
+          ? "bg-indigo-600 text-white shadow-lg shadow-indigo-200" 
+          : "text-slate-600 hover:bg-slate-100 hover:text-indigo-600"
+      )}
+      onClick={onClick}
+    >
+      <Icon className={cn("w-5 h-5", active ? "text-white" : "text-slate-400 group-hover:text-indigo-600")} />
+      <span className="font-medium">{label}</span>
+    </div>
+  );
+
+  if (to) {
+    return <Link to={to}>{content}</Link>;
+  }
+  return content;
+};
 
 const StatCard = ({ title, value, icon: Icon, color, trend }: { title: string, value: string, icon: any, color: string, trend?: string }) => (
   <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition-shadow duration-300">
@@ -288,7 +298,7 @@ const PrintModal = ({ order, type, onClose }: { order: Order, type: 'quote' | 'd
 
   return (
     <div className="fixed inset-0 z-[100] bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 print:p-0 print:bg-white">
-      <div className="bg-white w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-3xl shadow-2xl flex flex-col print:shadow-none print:max-h-none print:rounded-none">
+      <div className="bg-white w-full max-w-6xl max-h-[90vh] overflow-y-auto rounded-3xl shadow-2xl flex flex-col print:shadow-none print:max-h-none print:rounded-none">
         <div className="p-6 border-b border-slate-100 flex justify-between items-center print:hidden">
           <h2 className="text-xl font-bold text-slate-900">
             {type === 'quote' ? 'Xem trước Báo giá' : 'Xem trước Phiếu giao hàng'}
@@ -307,7 +317,7 @@ const PrintModal = ({ order, type, onClose }: { order: Order, type: 'quote' | 'd
         </div>
         
         <div className="p-12 print:p-0">
-          <div className="max-w-[800px] mx-auto bg-white">
+          <div className="max-w-[1000px] mx-auto bg-white">
             <div className="flex justify-between items-start mb-10 border-b-2 border-indigo-600 pb-8">
               <div className="flex items-center">
                 <div className="flex-1">
@@ -726,7 +736,7 @@ const OrderForm = ({ initialOrder, orders = [], onSave, onCancel, userRole }: { 
   };
 
   return (
-    <div className="max-w-4xl mx-auto bg-white p-8 rounded-3xl shadow-xl border border-slate-100 animate-in zoom-in-95 duration-300">
+    <div className="max-w-6xl mx-auto bg-white p-8 rounded-3xl shadow-xl border border-slate-100 animate-in zoom-in-95 duration-300">
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-2xl font-bold text-slate-900">{initialOrder ? 'Cập nhật đơn hàng' : 'Tạo đơn hàng mới'}</h1>
         <div className="flex items-center gap-2">
@@ -1323,7 +1333,7 @@ const SupplierOrderForm = ({
   };
 
   return (
-    <div className="max-w-2xl mx-auto bg-white p-8 rounded-3xl shadow-xl border border-slate-100 animate-in zoom-in-95 duration-300">
+    <div className="max-w-4xl mx-auto bg-white p-8 rounded-3xl shadow-xl border border-slate-100 animate-in zoom-in-95 duration-300">
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-2xl font-bold text-slate-900">{initialOrder ? 'Cập nhật đơn mua' : 'Tạo đơn mua mới'}</h1>
         <button onClick={onCancel} className="p-2 hover:bg-slate-100 rounded-full transition-colors">
@@ -1551,6 +1561,749 @@ const ActivityLogs = ({ logs }: { logs: ActivityLog[] }) => (
   </div>
 );
 
+// --- Price Calculator Component ---
+
+const DEFAULT_PAPER_TYPES: PaperType[] = [
+  { id: 'c150', name: 'Couche 150gsm', pricePerA4: 800 },
+  { id: 'c300', name: 'Couche 300gsm', pricePerA4: 1500 },
+  { id: 'f80', name: 'Ford 80gsm', pricePerA4: 500 },
+  { id: 'f100', name: 'Ford 100gsm', pricePerA4: 650 },
+  { id: 'br250', name: 'Bristol 250gsm', pricePerA4: 1200 },
+  { id: 'decal_giay', name: 'Decal Giấy', pricePerA4: 1600 },
+  { id: 'decal_nhua', name: 'Decal Nhựa', pricePerA4: 2200 },
+];
+
+const STANDARD_SIZES = [
+  { id: 'a3', name: 'A3 (29.7 x 42 cm)', width: 29.7, height: 42 },
+  { id: 'a4', name: 'A4 (21 x 29.7 cm)', width: 21, height: 29.7 },
+  { id: 'a5', name: 'A5 (14.8 x 21 cm)', width: 14.8, height: 21 },
+  { id: 'a6', name: 'A6 (10.5 x 14.8 cm)', width: 10.5, height: 14.8 },
+  { id: 'namecard', name: 'Namecard (9 x 5.5 cm)', width: 9, height: 5.5 },
+];
+
+const DEFAULT_POST_PROCESSING: PostProcessingType[] = [
+  { id: 'lam_bong', name: 'Cán bóng', pricePerM2: 5000, type: 'm2' },
+  { id: 'lam_mo', name: 'Cán mờ', pricePerM2: 5000, type: 'm2' },
+  { id: 'be_thanh_pham', name: 'Bế thành phẩm', pricePerUnit: 200, type: 'unit' },
+  { id: 'can_gap', name: 'Cấn gấp', pricePerUnit: 100, type: 'unit' },
+  { id: 'dong_cuon', name: 'Đóng cuốn', pricePerUnit: 2000, type: 'unit' },
+];
+
+const DEFAULT_PRINT_CONFIG: PrintConfig = {
+  basePrice1Side: 1500,
+  basePrice2Sides: 2500,
+  tier1Threshold: 200,
+  tier1Discount: 0.85,
+  tier2Threshold: 500,
+  tier2Discount: 0.7,
+  tier3Threshold: 1000,
+  tier3Discount: 0.6,
+};
+
+const PriceCalculator = ({ 
+  isFloating, 
+  onClose, 
+  userRole,
+  paperTypes,
+  postProcessing,
+  printConfig,
+  onUpdatePaper,
+  onUpdateProcessing,
+  onUpdateConfig
+}: { 
+  isFloating?: boolean, 
+  onClose?: () => void,
+  userRole?: 'admin' | 'staff',
+  paperTypes: PaperType[],
+  postProcessing: PostProcessingType[],
+  printConfig: PrintConfig,
+  onUpdatePaper: (p: PaperType[]) => void,
+  onUpdateProcessing: (p: PostProcessingType[]) => void,
+  onUpdateConfig: (c: PrintConfig) => void
+}) => {
+  const [activeTab, setActiveTab] = useState<'calc' | 'settings'>('calc');
+  const [paperId, setPaperId] = useState(paperTypes[0]?.id || '');
+  const [sizeId, setSizeId] = useState(STANDARD_SIZES[1].id);
+  const [isCustomSize, setIsCustomSize] = useState(false);
+  const [customWidth, setCustomWidth] = useState(10);
+  const [customHeight, setCustomHeight] = useState(10);
+  const [quantity, setQuantity] = useState(100);
+  const [selectedProcessing, setSelectedProcessing] = useState<string[]>([]);
+  const [printSide, setPrintSide] = useState<'1' | '2'>('1');
+
+  // Settings states
+  const [editingConfig, setEditingConfig] = useState<PrintConfig>(printConfig);
+  const [newPaper, setNewPaper] = useState({ name: '', pricePerA4: 0 });
+  const [newProc, setNewProc] = useState({ name: '', pricePerM2: 0, pricePerUnit: 0, type: 'm2' as 'm2' | 'unit' });
+  const [editingPaperId, setEditingPaperId] = useState<string | null>(null);
+  const [editingProcId, setEditingProcId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (paperTypes.length > 0 && !paperId) {
+      setPaperId(paperTypes[0].id);
+    }
+  }, [paperTypes]);
+
+  const calculation = useMemo(() => {
+    const paper = paperTypes.find(p => p.id === paperId);
+    if (!paper) return { paperCost: 0, printCost: 0, processingCost: 0, subtotal: 0, vat: 0, total: 0, unitPrice: 0 };
+
+    const size = isCustomSize 
+      ? { width: customWidth, height: customHeight }
+      : STANDARD_SIZES.find(s => s.id === sizeId)!;
+
+    const areaM2 = (size.width * size.height) / 10000;
+    const a4AreaM2 = (21 * 29.7) / 10000;
+    const paperCost = (areaM2 / a4AreaM2) * paper.pricePerA4 * quantity;
+    
+    const basePrintPrice = printSide === '1' ? printConfig.basePrice1Side : printConfig.basePrice2Sides;
+    let printPricePerSheet = basePrintPrice;
+    
+    if (quantity >= printConfig.tier3Threshold) printPricePerSheet *= printConfig.tier3Discount;
+    else if (quantity >= printConfig.tier2Threshold) printPricePerSheet *= printConfig.tier2Discount;
+    else if (quantity >= printConfig.tier1Threshold) printPricePerSheet *= printConfig.tier1Discount;
+
+    const printCost = printPricePerSheet * quantity;
+
+    let processingCost = 0;
+    selectedProcessing.forEach(id => {
+      const proc = postProcessing.find(p => p.id === id);
+      if (proc) {
+        if (proc.pricePerM2) {
+          processingCost += proc.pricePerM2 * areaM2 * quantity;
+        } else if (proc.pricePerUnit) {
+          processingCost += proc.pricePerUnit * quantity;
+        }
+      }
+    });
+
+    const subtotal = paperCost + printCost + processingCost;
+    const vat = subtotal * 0.1;
+    const total = subtotal + vat;
+
+    return {
+      paperCost,
+      printCost,
+      processingCost,
+      subtotal,
+      vat,
+      total,
+      unitPrice: total / quantity
+    };
+  }, [paperId, sizeId, isCustomSize, customWidth, customHeight, quantity, selectedProcessing, printSide, paperTypes, postProcessing, printConfig]);
+
+  const handleAddPaper = () => {
+    if (!newPaper.name) return;
+    const id = newPaper.name.toLowerCase().replace(/\s+/g, '_');
+    const updated = [...paperTypes, { ...newPaper, id }];
+    onUpdatePaper(updated);
+    setNewPaper({ name: '', pricePerA4: 0 });
+  };
+
+  const handleDeletePaper = (id: string) => {
+    const updated = paperTypes.filter(p => p.id !== id);
+    onUpdatePaper(updated);
+  };
+
+  const handleAddProc = () => {
+    if (!newProc.name) return;
+    const id = newProc.name.toLowerCase().replace(/\s+/g, '_');
+    const updated: PostProcessingType[] = [...postProcessing, { 
+      id, 
+      name: newProc.name, 
+      pricePerM2: newProc.type === 'm2' ? newProc.pricePerM2 : undefined,
+      pricePerUnit: newProc.type === 'unit' ? newProc.pricePerUnit : undefined,
+      type: newProc.type
+    }];
+    onUpdateProcessing(updated);
+    setNewProc({ name: '', pricePerM2: 0, pricePerUnit: 0, type: 'm2' });
+  };
+
+  const handleDeleteProc = (id: string) => {
+    const updated = postProcessing.filter(p => p.id !== id);
+    onUpdateProcessing(updated);
+  };
+
+  const handleSaveConfig = () => {
+    onUpdateConfig(editingConfig);
+  };
+
+  const handleUpdatePaperItem = (id: string, name: string, pricePerA4: number) => {
+    const updated = paperTypes.map(p => p.id === id ? { ...p, name, pricePerA4 } : p);
+    onUpdatePaper(updated);
+    setEditingPaperId(null);
+  };
+
+  const handleUpdateProcItem = (id: string, name: string, pricePerM2?: number, pricePerUnit?: number) => {
+    const updated = postProcessing.map(p => p.id === id ? { ...p, name, pricePerM2, pricePerUnit } : p);
+    onUpdateProcessing(updated);
+    setEditingProcId(null);
+  };
+
+  const calcContent = (
+    <div className={cn(
+      "grid gap-6",
+      isFloating ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3" : "grid-cols-1 lg:grid-cols-3 gap-8"
+    )}>
+      <div className={cn(
+        "space-y-4",
+        isFloating ? "md:col-span-1 lg:col-span-2" : "lg:col-span-2"
+      )}>
+        <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 space-y-4">
+          <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+            <FileText className="w-4 h-4 text-indigo-600" />
+            Thông số sản phẩm
+          </h2>
+
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-slate-500 uppercase">Loại giấy</label>
+              <select 
+                value={paperId}
+                onChange={(e) => setPaperId(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-sm"
+              >
+                {paperTypes.map(p => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-slate-500 uppercase">Số lượng</label>
+              <input 
+                type="number"
+                value={quantity}
+                onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 0))}
+                className="w-full px-3 py-2 rounded-lg border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-sm"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-slate-500 uppercase">Mặt in</label>
+              <div className="flex gap-1 p-1 bg-slate-100 rounded-lg">
+                <button 
+                  onClick={() => setPrintSide('1')}
+                  className={cn(
+                    "flex-1 py-1.5 rounded-md text-xs font-bold transition-all",
+                    printSide === '1' ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500"
+                  )}
+                >
+                  1 mặt
+                </button>
+                <button 
+                  onClick={() => setPrintSide('2')}
+                  className={cn(
+                    "flex-1 py-1.5 rounded-md text-xs font-bold transition-all",
+                    printSide === '2' ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500"
+                  )}
+                >
+                  2 mặt
+                </button>
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-slate-500 uppercase">Kích thước</label>
+              <div className="flex gap-1 p-1 bg-slate-100 rounded-lg">
+                <button 
+                  onClick={() => setIsCustomSize(false)}
+                  className={cn(
+                    "flex-1 py-1.5 rounded-md text-xs font-bold transition-all",
+                    !isCustomSize ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500"
+                  )}
+                >
+                  Chuẩn
+                </button>
+                <button 
+                  onClick={() => setIsCustomSize(true)}
+                  className={cn(
+                    "flex-1 py-1.5 rounded-md text-xs font-bold transition-all",
+                    isCustomSize ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500"
+                  )}
+                >
+                  Tùy chỉnh
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {!isCustomSize ? (
+            <div className="space-y-2">
+              <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
+                {STANDARD_SIZES.map(s => (
+                  <button
+                    key={s.id}
+                    onClick={() => setSizeId(s.id)}
+                    className={cn(
+                      "px-3 py-2 rounded-lg border text-xs font-medium transition-all",
+                      sizeId === s.id 
+                        ? "border-indigo-600 bg-indigo-50 text-indigo-600" 
+                        : "border-slate-200 text-slate-600 hover:border-indigo-200"
+                    )}
+                  >
+                    {s.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-4 p-3 bg-slate-50 rounded-xl border border-dashed border-slate-200">
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-500 uppercase">Rộng (cm)</label>
+                <input 
+                  type="number"
+                  value={customWidth}
+                  onChange={(e) => setCustomWidth(parseFloat(e.target.value) || 0)}
+                  className="w-full px-3 py-1.5 rounded-lg border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none text-sm"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-500 uppercase">Cao (cm)</label>
+                <input 
+                  type="number"
+                  value={customHeight}
+                  onChange={(e) => setCustomHeight(parseFloat(e.target.value) || 0)}
+                  className="w-full px-3 py-1.5 rounded-lg border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none text-sm"
+                />
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 space-y-3">
+          <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+            <Plus className="w-4 h-4 text-indigo-600" />
+            Gia công sau in
+          </h2>
+          <div className="grid grid-cols-2 gap-2">
+            {postProcessing.map(proc => (
+              <label 
+                key={proc.id}
+                className={cn(
+                  "flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all",
+                  selectedProcessing.includes(proc.id)
+                    ? "border-indigo-600 bg-indigo-50"
+                    : "border-slate-100 hover:border-indigo-200"
+                )}
+              >
+                <input 
+                  type="checkbox"
+                  checked={selectedProcessing.includes(proc.id)}
+                  onChange={(e) => {
+                    if (e.target.checked) setSelectedProcessing([...selectedProcessing, proc.id]);
+                    else setSelectedProcessing(selectedProcessing.filter(id => id !== proc.id));
+                  }}
+                  className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                />
+                <span className={cn(
+                  "text-xs font-medium",
+                  selectedProcessing.includes(proc.id) ? "text-indigo-900" : "text-slate-600"
+                )}>
+                  {proc.name}
+                </span>
+              </label>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        <div className={cn(
+          "bg-indigo-600 p-5 rounded-2xl shadow-xl shadow-indigo-200 text-white",
+          !isFloating && "sticky top-8"
+        )}>
+          <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
+            <DollarSign className="w-5 h-5" />
+            Kết quả
+          </h2>
+
+          <div className="grid grid-cols-2 gap-x-6 gap-y-2 mb-4 text-xs">
+            <div className="flex justify-between text-indigo-100">
+              <span>Tiền giấy</span>
+              <span className="font-bold text-white">{formatCurrency(calculation.paperCost)}</span>
+            </div>
+            <div className="flex justify-between text-indigo-100">
+              <span>Tiền in</span>
+              <span className="font-bold text-white">{formatCurrency(calculation.printCost)}</span>
+            </div>
+            <div className="flex justify-between text-indigo-100">
+              <span>Gia công</span>
+              <span className="font-bold text-white">{formatCurrency(calculation.processingCost)}</span>
+            </div>
+            <div className="flex justify-between text-indigo-100">
+              <span>VAT (10%)</span>
+              <span className="font-bold text-white">{formatCurrency(calculation.vat)}</span>
+            </div>
+          </div>
+
+          <div className="pt-3 border-t border-indigo-500/30 flex justify-between text-indigo-100 mb-4 text-sm">
+            <span>Tạm tính</span>
+            <span className="font-bold text-white">{formatCurrency(calculation.subtotal)}</span>
+          </div>
+
+          <div className="bg-white/10 p-4 rounded-xl mb-6">
+            <p className="text-indigo-100 text-[10px] mb-1 uppercase tracking-wider font-bold">Tổng cộng</p>
+            <p className="text-2xl font-black">{formatCurrency(calculation.total)}</p>
+            <p className="text-indigo-200 text-[10px] mt-1 italic">* Đơn giá: {formatCurrency(calculation.unitPrice)} / sp</p>
+          </div>
+
+          <button 
+            onClick={() => window.print()}
+            className="w-full bg-white text-indigo-600 py-3 rounded-xl font-black hover:bg-indigo-50 transition-all flex items-center justify-center gap-2 text-sm"
+          >
+            <Printer className="w-4 h-4" />
+            In báo giá
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  const settingsContent = (
+    <div className={cn(
+      "grid gap-6 pb-10",
+      isFloating ? "grid-cols-1 lg:grid-cols-2" : "grid-cols-1"
+    )}>
+      <div className="space-y-6">
+        {/* Print Config */}
+        <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 space-y-4">
+        <h3 className="font-bold text-slate-900 flex items-center gap-2">
+          <Settings className="w-4 h-4 text-indigo-600" />
+          Cấu hình giá in chung
+        </h3>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-1">
+            <label className="text-[10px] font-bold text-slate-500 uppercase">Giá in 1 mặt</label>
+            <input 
+              type="number"
+              value={editingConfig.basePrice1Side}
+              onChange={(e) => setEditingConfig({ ...editingConfig, basePrice1Side: parseInt(e.target.value) || 0 })}
+              className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm"
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="text-[10px] font-bold text-slate-500 uppercase">Giá in 2 mặt</label>
+            <input 
+              type="number"
+              value={editingConfig.basePrice2Sides}
+              onChange={(e) => setEditingConfig({ ...editingConfig, basePrice2Sides: parseInt(e.target.value) || 0 })}
+              className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm"
+            />
+          </div>
+        </div>
+        <div className="space-y-3">
+          <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Giảm giá theo số lượng</p>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-slate-500 uppercase">Mốc 1 (Số lượng)</label>
+              <input type="number" value={editingConfig.tier1Threshold} onChange={(e) => setEditingConfig({ ...editingConfig, tier1Threshold: parseInt(e.target.value) || 0 })} className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm" />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-slate-500 uppercase">Hệ số nhân (VD: 0.85)</label>
+              <input type="number" step="0.01" value={editingConfig.tier1Discount} onChange={(e) => setEditingConfig({ ...editingConfig, tier1Discount: parseFloat(e.target.value) || 0 })} className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-slate-500 uppercase">Mốc 2 (Số lượng)</label>
+              <input type="number" value={editingConfig.tier2Threshold} onChange={(e) => setEditingConfig({ ...editingConfig, tier2Threshold: parseInt(e.target.value) || 0 })} className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm" />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-slate-500 uppercase">Hệ số nhân (VD: 0.7)</label>
+              <input type="number" step="0.01" value={editingConfig.tier2Discount} onChange={(e) => setEditingConfig({ ...editingConfig, tier2Discount: parseFloat(e.target.value) || 0 })} className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-slate-500 uppercase">Mốc 3 (Số lượng)</label>
+              <input type="number" value={editingConfig.tier3Threshold} onChange={(e) => setEditingConfig({ ...editingConfig, tier3Threshold: parseInt(e.target.value) || 0 })} className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm" />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-slate-500 uppercase">Hệ số nhân (VD: 0.6)</label>
+              <input type="number" step="0.01" value={editingConfig.tier3Discount} onChange={(e) => setEditingConfig({ ...editingConfig, tier3Discount: parseFloat(e.target.value) || 0 })} className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm" />
+            </div>
+          </div>
+        </div>
+        <button onClick={handleSaveConfig} className="w-full bg-indigo-600 text-white py-2 rounded-xl font-bold hover:bg-indigo-700 transition-all text-sm">
+          Lưu cấu hình chung
+        </button>
+      </div>
+
+      {/* Paper Types */}
+      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 space-y-4">
+        <h3 className="font-bold text-slate-900 flex items-center gap-2">
+          <FileText className="w-4 h-4 text-indigo-600" />
+          Quản lý loại giấy
+        </h3>
+        <div className="space-y-2">
+          {paperTypes.map(p => (
+            <div key={p.id} className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+              {editingPaperId === p.id ? (
+                <div className="space-y-2">
+                  <input 
+                    className="w-full px-2 py-1 text-sm border rounded"
+                    defaultValue={p.name}
+                    id={`edit-paper-name-${p.id}`}
+                  />
+                  <div className="flex gap-2">
+                    <input 
+                      type="number"
+                      className="flex-1 px-2 py-1 text-sm border rounded"
+                      defaultValue={p.pricePerA4}
+                      id={`edit-paper-price-${p.id}`}
+                    />
+                    <button 
+                      onClick={() => {
+                        const name = (document.getElementById(`edit-paper-name-${p.id}`) as HTMLInputElement).value;
+                        const price = parseInt((document.getElementById(`edit-paper-price-${p.id}`) as HTMLInputElement).value) || 0;
+                        handleUpdatePaperItem(p.id, name, price);
+                      }}
+                      className="px-3 py-1 bg-indigo-600 text-white text-xs font-bold rounded"
+                    >
+                      Lưu
+                    </button>
+                    <button 
+                      onClick={() => setEditingPaperId(null)}
+                      className="px-3 py-1 bg-slate-200 text-slate-600 text-xs font-bold rounded"
+                    >
+                      Hủy
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-bold text-slate-900">{p.name}</p>
+                    <p className="text-xs text-slate-500">{formatCurrency(p.pricePerA4)} / tờ A4</p>
+                  </div>
+                  <div className="flex gap-1">
+                    <button onClick={() => setEditingPaperId(p.id)} className="p-2 text-slate-400 hover:text-indigo-600 transition-colors">
+                      <Plus className="w-4 h-4 rotate-45" /> {/* Using Plus as a placeholder for edit if no Edit icon */}
+                    </button>
+                    <button onClick={() => handleDeletePaper(p.id)} className="p-2 text-slate-400 hover:text-rose-600 transition-colors">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+        <div className="pt-4 border-t border-slate-100 space-y-3">
+          <p className="text-xs font-bold text-slate-400 uppercase">Thêm loại giấy mới</p>
+          <div className="grid grid-cols-2 gap-2">
+            <input 
+              placeholder="Tên giấy" 
+              value={newPaper.name} 
+              onChange={(e) => setNewPaper({ ...newPaper, name: e.target.value })}
+              className="px-3 py-2 rounded-lg border border-slate-200 text-sm"
+            />
+            <input 
+              type="number" 
+              placeholder="Giá / tờ A4" 
+              value={newPaper.pricePerA4 || ''} 
+              onChange={(e) => setNewPaper({ ...newPaper, pricePerA4: parseInt(e.target.value) || 0 })}
+              className="px-3 py-2 rounded-lg border border-slate-200 text-sm"
+            />
+          </div>
+          <button onClick={handleAddPaper} className="w-full bg-slate-900 text-white py-2 rounded-xl font-bold hover:bg-slate-800 transition-all text-sm flex items-center justify-center gap-2">
+            <Plus className="w-4 h-4" /> Thêm giấy
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div className="space-y-6">
+      {/* Post Processing */}
+        <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 space-y-4">
+        <h3 className="font-bold text-slate-900 flex items-center gap-2">
+          <Plus className="w-4 h-4 text-indigo-600" />
+          Quản lý gia công
+        </h3>
+        <div className="space-y-2">
+          {postProcessing.map(p => (
+            <div key={p.id} className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+              {editingProcId === p.id ? (
+                <div className="space-y-2">
+                  <input 
+                    className="w-full px-2 py-1 text-sm border rounded"
+                    defaultValue={p.name}
+                    id={`edit-proc-name-${p.id}`}
+                  />
+                  <div className="flex gap-2">
+                    <input 
+                      type="number"
+                      className="flex-1 px-2 py-1 text-sm border rounded"
+                      defaultValue={p.type === 'm2' ? p.pricePerM2 : p.pricePerUnit}
+                      id={`edit-proc-price-${p.id}`}
+                    />
+                    <button 
+                      onClick={() => {
+                        const name = (document.getElementById(`edit-proc-name-${p.id}`) as HTMLInputElement).value;
+                        const price = parseInt((document.getElementById(`edit-proc-price-${p.id}`) as HTMLInputElement).value) || 0;
+                        handleUpdateProcItem(p.id, name, p.type === 'm2' ? price : undefined, p.type === 'unit' ? price : undefined);
+                      }}
+                      className="px-3 py-1 bg-indigo-600 text-white text-xs font-bold rounded"
+                    >
+                      Lưu
+                    </button>
+                    <button 
+                      onClick={() => setEditingProcId(null)}
+                      className="px-3 py-1 bg-slate-200 text-slate-600 text-xs font-bold rounded"
+                    >
+                      Hủy
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-bold text-slate-900">{p.name}</p>
+                    <p className="text-xs text-slate-500">
+                      {p.pricePerM2 ? `${formatCurrency(p.pricePerM2)} / m²` : `${formatCurrency(p.pricePerUnit || 0)} / sp`}
+                    </p>
+                  </div>
+                  <div className="flex gap-1">
+                    <button onClick={() => setEditingProcId(p.id)} className="p-2 text-slate-400 hover:text-indigo-600 transition-colors">
+                      <Plus className="w-4 h-4 rotate-45" />
+                    </button>
+                    <button onClick={() => handleDeleteProc(p.id)} className="p-2 text-slate-400 hover:text-rose-600 transition-colors">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+        <div className="pt-4 border-t border-slate-100 space-y-3">
+          <p className="text-xs font-bold text-slate-400 uppercase">Thêm gia công mới</p>
+          <input 
+            placeholder="Tên gia công" 
+            value={newProc.name} 
+            onChange={(e) => setNewProc({ ...newProc, name: e.target.value })}
+            className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm"
+          />
+          <div className="grid grid-cols-2 gap-2">
+            <select 
+              value={newProc.type} 
+              onChange={(e) => setNewProc({ ...newProc, type: e.target.value as 'm2' | 'unit' })}
+              className="px-3 py-2 rounded-lg border border-slate-200 text-sm"
+            >
+              <option value="m2">Tính theo m²</option>
+              <option value="unit">Tính theo sản phẩm</option>
+            </select>
+            <input 
+              type="number" 
+              placeholder="Đơn giá" 
+              value={newProc.type === 'm2' ? (newProc.pricePerM2 || '') : (newProc.pricePerUnit || '')} 
+              onChange={(e) => {
+                const val = parseInt(e.target.value) || 0;
+                if (newProc.type === 'm2') setNewProc({ ...newProc, pricePerM2: val });
+                else setNewProc({ ...newProc, pricePerUnit: val });
+              }}
+              className="px-3 py-2 rounded-lg border border-slate-200 text-sm"
+            />
+          </div>
+          <button onClick={handleAddProc} className="w-full bg-slate-900 text-white py-2 rounded-xl font-bold hover:bg-slate-800 transition-all text-sm flex items-center justify-center gap-2">
+            <Plus className="w-4 h-4" /> Thêm gia công
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+);
+
+  const finalContent = (
+    <div className={cn(
+      "space-y-6",
+      isFloating ? "p-6" : "max-w-6xl mx-auto space-y-8 animate-in fade-in duration-500"
+    )}>
+      {!isFloating && (
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-black text-slate-900">Tính giá in tự động</h1>
+            <p className="text-slate-500 mt-1">Ước tính chi phí sản xuất nhanh chóng</p>
+          </div>
+          <div className="flex items-center gap-4">
+            {userRole === 'admin' && (
+              <div className="flex bg-slate-100 p-1 rounded-xl">
+                <button 
+                  onClick={() => setActiveTab('calc')}
+                  className={cn("px-4 py-2 rounded-lg text-sm font-bold transition-all", activeTab === 'calc' ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500")}
+                >
+                  Tính giá
+                </button>
+                <button 
+                  onClick={() => setActiveTab('settings')}
+                  className={cn("px-4 py-2 rounded-lg text-sm font-bold transition-all", activeTab === 'settings' ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500")}
+                >
+                  Cài đặt giá
+                </button>
+              </div>
+            )}
+            <div className="bg-indigo-50 p-3 rounded-2xl">
+              <Calculator className="w-8 h-8 text-indigo-600" />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isFloating && userRole === 'admin' && (
+        <div className="flex bg-slate-100 p-1 rounded-xl mb-4">
+          <button 
+            onClick={() => setActiveTab('calc')}
+            className={cn("flex-1 py-1.5 rounded-lg text-xs font-bold transition-all", activeTab === 'calc' ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500")}
+          >
+            Tính giá
+          </button>
+          <button 
+            onClick={() => setActiveTab('settings')}
+            className={cn("flex-1 py-1.5 rounded-lg text-xs font-bold transition-all", activeTab === 'settings' ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500")}
+          >
+            Cài đặt
+          </button>
+        </div>
+      )}
+
+      {activeTab === 'calc' ? calcContent : settingsContent}
+    </div>
+  );
+
+  if (isFloating) {
+    return (
+      <motion.div
+        drag
+        dragMomentum={false}
+        initial={{ opacity: 0, scale: 0.9, x: 100, y: 100 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.9 }}
+        className="fixed z-[200] w-[90vw] md:w-[750px] lg:w-[900px] bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[90vh]"
+        style={{ top: '50px', right: '40px' }}
+      >
+        <div className="bg-slate-900 p-4 flex justify-between items-center cursor-move">
+          <div className="flex items-center gap-2 text-white">
+            <Calculator className="w-5 h-5 text-indigo-400" />
+            <span className="font-bold text-sm">Tính giá in nhanh</span>
+          </div>
+          <button 
+            onClick={onClose}
+            className="p-1.5 hover:bg-white/10 rounded-lg transition-colors"
+          >
+            <X className="w-5 h-5 text-slate-400" />
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto scrollbar-hide">
+          {finalContent}
+        </div>
+      </motion.div>
+    );
+  }
+
+  return finalContent;
+};
+
 const UserManagement = ({ users, onUpdateRole, onApprove, onDelete }: { 
   users: UserProfile[], 
   onUpdateRole: (uid: string, role: 'admin' | 'staff') => void, 
@@ -1702,6 +2455,13 @@ export default function App() {
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
   const [editingSupplierOrder, setEditingSupplierOrder] = useState<SupplierOrder | null>(null);
   const [isSidebarOpen, setSidebarOpen] = useState(true);
+  const [isCalculatorOpen, setCalculatorOpen] = useState(false);
+  
+  // Pricing settings
+  const [paperTypes, setPaperTypes] = useState<PaperType[]>([]);
+  const [postProcessing, setPostProcessing] = useState<PostProcessingType[]>([]);
+  const [printConfig, setPrintConfig] = useState<PrintConfig>(DEFAULT_PRINT_CONFIG);
+
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -1755,6 +2515,85 @@ export default function App() {
     });
     return unsubscribe;
   }, []);
+
+  useEffect(() => {
+    if (!user) return;
+
+    // Fetch Paper Types
+    const unsubPaper = onSnapshot(collection(db, 'settings_paper'), (snapshot) => {
+      if (snapshot.empty) {
+        // Seed initial data
+        DEFAULT_PAPER_TYPES.forEach(p => setDoc(doc(db, 'settings_paper', p.id), p));
+      } else {
+        setPaperTypes(snapshot.docs.map(d => d.data() as PaperType));
+      }
+    });
+
+    // Fetch Post Processing
+    const unsubProc = onSnapshot(collection(db, 'settings_processing'), (snapshot) => {
+      if (snapshot.empty) {
+        // Seed initial data
+        DEFAULT_POST_PROCESSING.forEach(p => setDoc(doc(db, 'settings_processing', p.id), p));
+      } else {
+        setPostProcessing(snapshot.docs.map(d => d.data() as PostProcessingType));
+      }
+    });
+
+    // Fetch Print Config
+    const unsubConfig = onSnapshot(doc(db, 'settings_print_config', 'main'), (docSnap) => {
+      if (!docSnap.exists()) {
+        // Seed initial data
+        setDoc(doc(db, 'settings_print_config', 'main'), DEFAULT_PRINT_CONFIG);
+      } else {
+        setPrintConfig(docSnap.data() as PrintConfig);
+      }
+    });
+
+    return () => {
+      unsubPaper();
+      unsubProc();
+      unsubConfig();
+    };
+  }, [user]);
+
+  const handleUpdatePaper = async (updated: PaperType[]) => {
+    if (profile?.role !== 'admin') return;
+    // Simple way: delete all and re-add or just update individual
+    // For simplicity in this UI, we'll just set individual docs
+    const currentIds = paperTypes.map(p => p.id);
+    const newIds = updated.map(p => p.id);
+    
+    // Delete removed
+    for (const id of currentIds) {
+      if (!newIds.includes(id)) {
+        await deleteDoc(doc(db, 'settings_paper', id));
+      }
+    }
+    // Add/Update
+    for (const p of updated) {
+      await setDoc(doc(db, 'settings_paper', p.id), p);
+    }
+  };
+
+  const handleUpdateProcessing = async (updated: PostProcessingType[]) => {
+    if (profile?.role !== 'admin') return;
+    const currentIds = postProcessing.map(p => p.id);
+    const newIds = updated.map(p => p.id);
+    
+    for (const id of currentIds) {
+      if (!newIds.includes(id)) {
+        await deleteDoc(doc(db, 'settings_processing', id));
+      }
+    }
+    for (const p of updated) {
+      await setDoc(doc(db, 'settings_processing', p.id), p);
+    }
+  };
+
+  const handleUpdatePrintConfig = async (updated: PrintConfig) => {
+    if (profile?.role !== 'admin') return;
+    await setDoc(doc(db, 'settings_print_config', 'main'), updated);
+  };
 
   useEffect(() => {
     if (!user) return;
@@ -2044,6 +2883,7 @@ export default function App() {
                 )}
                 <SidebarItem to="/orders" icon={FileText} label="Đơn hàng" active={location.pathname === '/orders'} />
                 <SidebarItem to="/orders/new" icon={Plus} label="Tạo đơn hàng" active={location.pathname === '/orders/new'} />
+                <SidebarItem icon={Calculator} label="Tính giá in" onClick={() => setCalculatorOpen(!isCalculatorOpen)} />
                 <SidebarItem to="/debt" icon={CreditCard} label="Công nợ" active={location.pathname === '/debt'} />
                 <SidebarItem to="/suppliers" icon={Truck} label="Nhà cung cấp" active={location.pathname.startsWith('/suppliers')} />
                 {profile?.role === 'admin' && (
@@ -2085,7 +2925,7 @@ export default function App() {
               <div className="w-10" />
             </header>
 
-            <div className="p-8 max-w-7xl mx-auto h-[calc(100vh-4rem)] lg:h-screen overflow-y-auto scrollbar-hide">
+            <div className="p-8 max-w-[1600px] mx-auto h-[calc(100vh-4rem)] lg:h-screen overflow-y-auto scrollbar-hide">
               <Routes>
                 <Route path="/" element={
                   profile?.role === 'admin' ? <Dashboard orders={orders} supplierOrders={supplierOrders} userRole={profile?.role} users={users} /> : <Navigate to="/orders/new" />
@@ -2145,6 +2985,21 @@ export default function App() {
             </div>
           </main>
         </div>
+        <AnimatePresence>
+          {isCalculatorOpen && (
+            <PriceCalculator 
+              isFloating 
+              onClose={() => setCalculatorOpen(false)} 
+              userRole={profile?.role}
+              paperTypes={paperTypes}
+              postProcessing={postProcessing}
+              printConfig={printConfig}
+              onUpdatePaper={handleUpdatePaper}
+              onUpdateProcessing={handleUpdateProcessing}
+              onUpdateConfig={handleUpdatePrintConfig}
+            />
+          )}
+        </AnimatePresence>
       </ErrorBoundary>
   );
 }
