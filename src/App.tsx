@@ -318,7 +318,7 @@ const PrintModal = ({ order, type, onClose }: { order: Order, type: 'quote' | 'd
         
         <div className="p-12 print:p-0">
           <div className="max-w-[1000px] mx-auto bg-white">
-            <div className="flex justify-between items-start mb-10 border-b-2 border-indigo-600 pb-8">
+            <div className="flex justify-between items-start mb-10 border-b-2 border-orange-500 pb-8">
               <div className="flex items-center">
                 <div className="flex-1">
                   <h2 className="text-xl font-black text-slate-900 uppercase leading-tight">Công ty TNHH TM-DV-SX An Việt Solution</h2>
@@ -329,7 +329,7 @@ const PrintModal = ({ order, type, onClose }: { order: Order, type: 'quote' | 'd
                 </div>
               </div>
               <div className="text-right flex-shrink-0 ml-6">
-                <h1 className="text-2xl font-black text-indigo-600 uppercase mb-2 whitespace-nowrap">
+                <h1 className="text-2xl font-black text-orange-500 uppercase mb-2 whitespace-nowrap">
                   {type === 'quote' ? 'BÁO GIÁ' : 'PHIẾU GIAO HÀNG'}
                 </h1>
                 <p className="text-slate-900 font-mono font-bold">{order.orderCode || `AVP-OLD-${order.id.slice(-4).toUpperCase()}`}</p>
@@ -388,7 +388,15 @@ const PrintModal = ({ order, type, onClose }: { order: Order, type: 'quote' | 'd
             </table>
 
             {type === 'quote' && (
-              <div className="flex justify-end mb-12">
+              <div className="flex justify-between items-end mb-12">
+                <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100">
+                  <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Thông tin chuyển khoản</h3>
+                  <div className="text-sm text-slate-700 space-y-1">
+                    <p><span className="font-bold">Số TK:</span> 90317874102</p>
+                    <p><span className="font-bold">Ngân hàng:</span> Tiên Phong (TPbank)</p>
+                    <p><span className="font-bold">Chủ tài khoản:</span> Công ty TNHH TM-DV-SX An Việt Solution</p>
+                  </div>
+                </div>
                 <div className="w-64 space-y-3">
                   <div className="flex justify-between text-slate-600">
                     <span>Tạm tính:</span>
@@ -402,6 +410,19 @@ const PrintModal = ({ order, type, onClose }: { order: Order, type: 'quote' | 'd
                     <span>TỔNG CỘNG:</span>
                     <span>{formatCurrency(order.totalAmount)}</span>
                   </div>
+                </div>
+              </div>
+            )}
+
+            {type === 'quote' && (
+              <div className="grid grid-cols-2 gap-12 pt-12 border-t border-slate-100">
+                <div className="text-center">
+                  <p className="font-bold text-slate-900 mb-20">Khách hàng</p>
+                  <p className="text-slate-400 text-sm">(Ký và ghi rõ họ tên)</p>
+                </div>
+                <div className="text-center">
+                  <p className="font-bold text-slate-900 mb-20">Người báo giá</p>
+                  <p className="text-slate-400 text-sm">(Ký và ghi rõ họ tên)</p>
                 </div>
               </div>
             )}
