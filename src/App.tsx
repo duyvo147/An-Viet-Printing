@@ -5,7 +5,7 @@
 
 import React, { useEffect, useState, useMemo } from 'react';
 import { Routes, Route, Navigate, Link, useLocation, useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence, useDragControls } from 'motion/react';
 import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { collection, onSnapshot, query, orderBy, doc, getDoc, setDoc, addDoc, Timestamp, serverTimestamp, where, limit, updateDoc, deleteDoc } from 'firebase/firestore';
 import { 
@@ -1609,7 +1609,8 @@ const PriceCalculator = ({
   printConfig,
   onUpdatePaper,
   onUpdateProcessing,
-  onUpdateConfig
+  onUpdateConfig,
+  isSidebarOpen = true
 }: { 
   isFloating?: boolean, 
   onClose?: () => void,
@@ -1617,9 +1618,10 @@ const PriceCalculator = ({
   paperTypes: PaperType[],
   postProcessing: PostProcessingType[],
   printConfig: PrintConfig,
-  onUpdatePaper: (p: PaperType[]) => void,
-  onUpdateProcessing: (p: PostProcessingType[]) => void,
-  onUpdateConfig: (c: PrintConfig) => void
+  onUpdatePaper: (p: PaperType, action: 'add' | 'update' | 'delete') => void,
+  onUpdateProcessing: (p: PostProcessingType, action: 'add' | 'update' | 'delete') => void,
+  onUpdateConfig: (c: PrintConfig) => void,
+  isSidebarOpen?: boolean
 }) => {
   const [activeTab, setActiveTab] = useState<'calc' | 'settings'>('calc');
   const [paperId, setPaperId] = useState(paperTypes[0]?.id || '');
@@ -1630,6 +1632,10 @@ const PriceCalculator = ({
   const [quantity, setQuantity] = useState(100);
   const [selectedProcessing, setSelectedProcessing] = useState<string[]>([]);
   const [printSide, setPrintSide] = useState<'1' | '2'>('1');
+  
+  const [dimensions, setDimensions] = useState({ width: 1000, height: 800 });
+  const [isResizing, setIsResizing] = useState(false);
+  const dragControls = useDragControls();
 
   // Settings states
   const [editingConfig, setEditingConfig] = useState<PrintConfig>(printConfig);
@@ -1643,6 +1649,31 @@ const PriceCalculator = ({
       setPaperId(paperTypes[0].id);
     }
   }, [paperTypes]);
+
+  const handleResizeStart = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsResizing(true);
+    
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const startWidth = dimensions.width;
+    const startHeight = dimensions.height;
+
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      const newWidth = Math.max(400, startWidth + (moveEvent.clientX - startX));
+      const newHeight = Math.max(400, startHeight + (moveEvent.clientY - startY));
+      setDimensions({ width: newWidth, height: newHeight });
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+  };
 
   const calculation = useMemo(() => {
     const paper = paperTypes.find(p => p.id === paperId);
@@ -1695,33 +1726,43 @@ const PriceCalculator = ({
   const handleAddPaper = () => {
     if (!newPaper.name) return;
     const id = newPaper.name.toLowerCase().replace(/\s+/g, '_');
-    const updated = [...paperTypes, { ...newPaper, id }];
-    onUpdatePaper(updated);
+    onUpdatePaper({ ...newPaper, id }, 'add');
     setNewPaper({ name: '', pricePerA4: 0 });
   };
 
   const handleDeletePaper = (id: string) => {
-    const updated = paperTypes.filter(p => p.id !== id);
-    onUpdatePaper(updated);
+    onUpdatePaper({ id, name: '', pricePerA4: 0 }, 'delete');
   };
 
   const handleAddProc = () => {
     if (!newProc.name) return;
     const id = newProc.name.toLowerCase().replace(/\s+/g, '_');
-    const updated: PostProcessingType[] = [...postProcessing, { 
+    const newItem: PostProcessingType = { 
       id, 
       name: newProc.name, 
-      pricePerM2: newProc.type === 'm2' ? newProc.pricePerM2 : undefined,
-      pricePerUnit: newProc.type === 'unit' ? newProc.pricePerUnit : undefined,
-      type: newProc.type
-    }];
-    onUpdateProcessing(updated);
+      type: newProc.type,
+      pricePerM2: newProc.type === 'm2' ? (newProc.pricePerM2 || 0) : 0,
+      pricePerUnit: newProc.type === 'unit' ? (newProc.pricePerUnit || 0) : 0
+    };
+    onUpdateProcessing(newItem, 'add');
     setNewProc({ name: '', pricePerM2: 0, pricePerUnit: 0, type: 'm2' });
   };
 
+  const handleUpdateProcItem = (id: string, name: string, pricePerM2?: number, pricePerUnit?: number) => {
+    const original = postProcessing.find(p => p.id === id);
+    if (!original) return;
+    const updated: PostProcessingType = { 
+      ...original, 
+      name, 
+      pricePerM2: pricePerM2 || 0, 
+      pricePerUnit: pricePerUnit || 0 
+    };
+    onUpdateProcessing(updated, 'update');
+    setEditingProcId(null);
+  };
+
   const handleDeleteProc = (id: string) => {
-    const updated = postProcessing.filter(p => p.id !== id);
-    onUpdateProcessing(updated);
+    onUpdateProcessing({ id, name: '', type: 'm2' }, 'delete');
   };
 
   const handleSaveConfig = () => {
@@ -1729,15 +1770,8 @@ const PriceCalculator = ({
   };
 
   const handleUpdatePaperItem = (id: string, name: string, pricePerA4: number) => {
-    const updated = paperTypes.map(p => p.id === id ? { ...p, name, pricePerA4 } : p);
-    onUpdatePaper(updated);
+    onUpdatePaper({ id, name, pricePerA4 }, 'update');
     setEditingPaperId(null);
-  };
-
-  const handleUpdateProcItem = (id: string, name: string, pricePerM2?: number, pricePerUnit?: number) => {
-    const updated = postProcessing.map(p => p.id === id ? { ...p, name, pricePerM2, pricePerUnit } : p);
-    onUpdateProcessing(updated);
-    setEditingProcId(null);
   };
 
   const calcContent = (
@@ -1755,133 +1789,135 @@ const PriceCalculator = ({
             Thông số sản phẩm
           </h2>
 
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="space-y-1">
-              <label className="text-xs font-bold text-slate-500 uppercase">Loại giấy</label>
-              <select 
-                value={paperId}
-                onChange={(e) => setPaperId(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-sm"
-              >
-                {paperTypes.map(p => (
-                  <option key={p.id} value={p.id}>{p.name}</option>
-                ))}
-              </select>
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-xs font-bold text-slate-500 uppercase">Số lượng</label>
-              <input 
-                type="number"
-                value={quantity}
-                onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 0))}
-                className="w-full px-3 py-2 rounded-lg border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-sm"
-              />
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-xs font-bold text-slate-500 uppercase">Mặt in</label>
-              <div className="flex gap-1 p-1 bg-slate-100 rounded-lg">
-                <button 
-                  onClick={() => setPrintSide('1')}
-                  className={cn(
-                    "flex-1 py-1.5 rounded-md text-xs font-bold transition-all",
-                    printSide === '1' ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500"
-                  )}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 space-y-5">
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-slate-500 uppercase">Loại giấy</label>
+                <select 
+                  value={paperId}
+                  onChange={(e) => setPaperId(e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-base font-medium"
                 >
-                  1 mặt
-                </button>
-                <button 
-                  onClick={() => setPrintSide('2')}
-                  className={cn(
-                    "flex-1 py-1.5 rounded-md text-xs font-bold transition-all",
-                    printSide === '2' ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500"
-                  )}
-                >
-                  2 mặt
-                </button>
+                  {paperTypes.map(p => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
+                </select>
               </div>
-            </div>
 
-            <div className="space-y-1">
-              <label className="text-xs font-bold text-slate-500 uppercase">Kích thước</label>
-              <div className="flex gap-1 p-1 bg-slate-100 rounded-lg">
-                <button 
-                  onClick={() => setIsCustomSize(false)}
-                  className={cn(
-                    "flex-1 py-1.5 rounded-md text-xs font-bold transition-all",
-                    !isCustomSize ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500"
-                  )}
-                >
-                  Chuẩn
-                </button>
-                <button 
-                  onClick={() => setIsCustomSize(true)}
-                  className={cn(
-                    "flex-1 py-1.5 rounded-md text-xs font-bold transition-all",
-                    isCustomSize ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500"
-                  )}
-                >
-                  Tùy chỉnh
-                </button>
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-slate-500 uppercase">Số lượng</label>
+                <input 
+                  type="number"
+                  value={quantity}
+                  onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 0))}
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-base"
+                />
               </div>
-            </div>
-          </div>
 
-          {!isCustomSize ? (
-            <div className="space-y-2">
-              <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
-                {STANDARD_SIZES.map(s => (
-                  <button
-                    key={s.id}
-                    onClick={() => setSizeId(s.id)}
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-slate-500 uppercase">Mặt in</label>
+                <div className="flex gap-2 p-1.5 bg-slate-100 rounded-xl">
+                  <button 
+                    onClick={() => setPrintSide('1')}
                     className={cn(
-                      "px-3 py-2 rounded-lg border text-xs font-medium transition-all",
-                      sizeId === s.id 
-                        ? "border-indigo-600 bg-indigo-50 text-indigo-600" 
-                        : "border-slate-200 text-slate-600 hover:border-indigo-200"
+                      "flex-1 py-2.5 rounded-lg text-sm font-bold transition-all",
+                      printSide === '1' ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500"
                     )}
                   >
-                    {s.name}
+                    1 mặt
                   </button>
-                ))}
+                  <button 
+                    onClick={() => setPrintSide('2')}
+                    className={cn(
+                      "flex-1 py-2.5 rounded-lg text-sm font-bold transition-all",
+                      printSide === '2' ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500"
+                    )}
+                  >
+                    2 mặt
+                  </button>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-slate-500 uppercase">Kích thước</label>
+                <div className="flex gap-2 p-1.5 bg-slate-100 rounded-xl">
+                  <button 
+                    onClick={() => setIsCustomSize(false)}
+                    className={cn(
+                      "flex-1 py-2.5 rounded-lg text-sm font-bold transition-all",
+                      !isCustomSize ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500"
+                    )}
+                  >
+                    Chuẩn
+                  </button>
+                  <button 
+                    onClick={() => setIsCustomSize(true)}
+                    className={cn(
+                      "flex-1 py-2.5 rounded-lg text-sm font-bold transition-all",
+                      isCustomSize ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500"
+                    )}
+                  >
+                    Tùy chỉnh
+                  </button>
+                </div>
               </div>
             </div>
-          ) : (
-            <div className="grid grid-cols-2 gap-4 p-3 bg-slate-50 rounded-xl border border-dashed border-slate-200">
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-500 uppercase">Rộng (cm)</label>
-                <input 
-                  type="number"
-                  value={customWidth}
-                  onChange={(e) => setCustomWidth(parseFloat(e.target.value) || 0)}
-                  className="w-full px-3 py-1.5 rounded-lg border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none text-sm"
-                />
+
+            {!isCustomSize ? (
+              <div className="space-y-3">
+                <div className="grid grid-cols-3 md:grid-cols-4 gap-3">
+                  {STANDARD_SIZES.map(s => (
+                    <button
+                      key={s.id}
+                      onClick={() => setSizeId(s.id)}
+                      className={cn(
+                        "px-4 py-3 rounded-xl border text-sm font-bold transition-all",
+                        sizeId === s.id 
+                          ? "border-indigo-600 bg-indigo-50 text-indigo-600" 
+                          : "border-slate-200 text-slate-600 hover:border-indigo-200"
+                      )}
+                    >
+                      {s.name}
+                    </button>
+                  ))}
+                </div>
               </div>
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-500 uppercase">Cao (cm)</label>
-                <input 
-                  type="number"
-                  value={customHeight}
-                  onChange={(e) => setCustomHeight(parseFloat(e.target.value) || 0)}
-                  className="w-full px-3 py-1.5 rounded-lg border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none text-sm"
-                />
+            ) : (
+              <div className="grid grid-cols-2 gap-6 p-5 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-slate-500 uppercase">Rộng (cm)</label>
+                  <input 
+                    type="number"
+                    value={customWidth}
+                    onChange={(e) => setCustomWidth(parseFloat(e.target.value) || 0)}
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none text-base"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-slate-500 uppercase">Cao (cm)</label>
+                  <input 
+                    type="number"
+                    value={customHeight}
+                    onChange={(e) => setCustomHeight(parseFloat(e.target.value) || 0)}
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none text-base"
+                  />
+                </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
 
-        <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 space-y-3">
-          <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-            <Plus className="w-4 h-4 text-indigo-600" />
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 space-y-4">
+          <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+            <Plus className="w-5 h-5 text-indigo-600" />
             Gia công sau in
           </h2>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
             {postProcessing.map(proc => (
               <label 
                 key={proc.id}
                 className={cn(
-                  "flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all",
+                  "flex items-center gap-4 p-4 rounded-2xl border cursor-pointer transition-all",
                   selectedProcessing.includes(proc.id)
                     ? "border-indigo-600 bg-indigo-50"
                     : "border-slate-100 hover:border-indigo-200"
@@ -1894,10 +1930,10 @@ const PriceCalculator = ({
                     if (e.target.checked) setSelectedProcessing([...selectedProcessing, proc.id]);
                     else setSelectedProcessing(selectedProcessing.filter(id => id !== proc.id));
                   }}
-                  className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                  className="w-5 h-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
                 />
                 <span className={cn(
-                  "text-xs font-medium",
+                  "text-sm font-bold",
                   selectedProcessing.includes(proc.id) ? "text-indigo-900" : "text-slate-600"
                 )}>
                   {proc.name}
@@ -1908,52 +1944,52 @@ const PriceCalculator = ({
         </div>
       </div>
 
-      <div className="space-y-4">
+      <div className="space-y-6">
         <div className={cn(
-          "bg-indigo-600 p-5 rounded-2xl shadow-xl shadow-indigo-200 text-white",
+          "bg-indigo-600 p-8 rounded-3xl shadow-2xl shadow-indigo-200 text-white",
           !isFloating && "sticky top-8"
         )}>
-          <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
-            <DollarSign className="w-5 h-5" />
-            Kết quả
+          <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
+            <DollarSign className="w-6 h-6" />
+            Kết quả tính toán
           </h2>
 
-          <div className="grid grid-cols-2 gap-x-6 gap-y-2 mb-4 text-xs">
-            <div className="flex justify-between text-indigo-100">
+          <div className="grid grid-cols-1 gap-y-3 mb-6 text-sm">
+            <div className="flex justify-between text-indigo-100 pb-2 border-b border-white/10">
               <span>Tiền giấy</span>
-              <span className="font-bold text-white">{formatCurrency(calculation.paperCost)}</span>
+              <span className="font-bold text-white text-base">{formatCurrency(calculation.paperCost)}</span>
             </div>
-            <div className="flex justify-between text-indigo-100">
+            <div className="flex justify-between text-indigo-100 pb-2 border-b border-white/10">
               <span>Tiền in</span>
-              <span className="font-bold text-white">{formatCurrency(calculation.printCost)}</span>
+              <span className="font-bold text-white text-base">{formatCurrency(calculation.printCost)}</span>
             </div>
-            <div className="flex justify-between text-indigo-100">
+            <div className="flex justify-between text-indigo-100 pb-2 border-b border-white/10">
               <span>Gia công</span>
-              <span className="font-bold text-white">{formatCurrency(calculation.processingCost)}</span>
+              <span className="font-bold text-white text-base">{formatCurrency(calculation.processingCost)}</span>
             </div>
-            <div className="flex justify-between text-indigo-100">
+            <div className="flex justify-between text-indigo-100 pb-2 border-b border-white/10">
               <span>VAT (10%)</span>
-              <span className="font-bold text-white">{formatCurrency(calculation.vat)}</span>
+              <span className="font-bold text-white text-base">{formatCurrency(calculation.vat)}</span>
             </div>
           </div>
 
-          <div className="pt-3 border-t border-indigo-500/30 flex justify-between text-indigo-100 mb-4 text-sm">
+          <div className="pt-4 border-t border-indigo-400/50 flex justify-between text-indigo-100 mb-6 text-base">
             <span>Tạm tính</span>
-            <span className="font-bold text-white">{formatCurrency(calculation.subtotal)}</span>
+            <span className="font-bold text-white text-lg">{formatCurrency(calculation.subtotal)}</span>
           </div>
 
-          <div className="bg-white/10 p-4 rounded-xl mb-6">
-            <p className="text-indigo-100 text-[10px] mb-1 uppercase tracking-wider font-bold">Tổng cộng</p>
-            <p className="text-2xl font-black">{formatCurrency(calculation.total)}</p>
-            <p className="text-indigo-200 text-[10px] mt-1 italic">* Đơn giá: {formatCurrency(calculation.unitPrice)} / sp</p>
+          <div className="bg-white/10 p-6 rounded-2xl mb-8">
+            <p className="text-indigo-100 text-xs mb-2 uppercase tracking-widest font-black">Tổng cộng thanh toán</p>
+            <p className="text-4xl font-black">{formatCurrency(calculation.total)}</p>
+            <p className="text-indigo-200 text-xs mt-2 italic font-medium">* Đơn giá: {formatCurrency(calculation.unitPrice)} / sản phẩm</p>
           </div>
 
           <button 
             onClick={() => window.print()}
-            className="w-full bg-white text-indigo-600 py-3 rounded-xl font-black hover:bg-indigo-50 transition-all flex items-center justify-center gap-2 text-sm"
+            className="w-full bg-white text-indigo-600 py-4 rounded-2xl font-black hover:bg-indigo-50 transition-all flex items-center justify-center gap-3 text-base shadow-lg"
           >
-            <Printer className="w-4 h-4" />
-            In báo giá
+            <Printer className="w-5 h-5" />
+            In báo giá chi tiết
           </button>
         </div>
       </div>
@@ -1972,84 +2008,84 @@ const PriceCalculator = ({
           <Settings className="w-4 h-4 text-indigo-600" />
           Cấu hình giá in chung
         </h3>
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-1">
-            <label className="text-[10px] font-bold text-slate-500 uppercase">Giá in 1 mặt</label>
+        <div className="grid grid-cols-2 gap-6">
+          <div className="space-y-2">
+            <label className="text-xs font-bold text-slate-500 uppercase">Giá in 1 mặt</label>
             <input 
               type="number"
               value={editingConfig.basePrice1Side}
               onChange={(e) => setEditingConfig({ ...editingConfig, basePrice1Side: parseInt(e.target.value) || 0 })}
-              className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm"
+              className="w-full px-4 py-3 rounded-xl border border-slate-200 text-base font-medium"
             />
           </div>
-          <div className="space-y-1">
-            <label className="text-[10px] font-bold text-slate-500 uppercase">Giá in 2 mặt</label>
+          <div className="space-y-2">
+            <label className="text-xs font-bold text-slate-500 uppercase">Giá in 2 mặt</label>
             <input 
               type="number"
               value={editingConfig.basePrice2Sides}
               onChange={(e) => setEditingConfig({ ...editingConfig, basePrice2Sides: parseInt(e.target.value) || 0 })}
-              className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm"
+              className="w-full px-4 py-3 rounded-xl border border-slate-200 text-base font-medium"
             />
           </div>
         </div>
-        <div className="space-y-3">
-          <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Giảm giá theo số lượng</p>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1">
-              <label className="text-[10px] font-bold text-slate-500 uppercase">Mốc 1 (Số lượng)</label>
-              <input type="number" value={editingConfig.tier1Threshold} onChange={(e) => setEditingConfig({ ...editingConfig, tier1Threshold: parseInt(e.target.value) || 0 })} className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm" />
+        <div className="space-y-4">
+          <p className="text-sm font-black text-slate-400 uppercase tracking-widest">Giảm giá theo số lượng</p>
+          <div className="grid grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-500 uppercase">Mốc 1 (Số lượng)</label>
+              <input type="number" value={editingConfig.tier1Threshold} onChange={(e) => setEditingConfig({ ...editingConfig, tier1Threshold: parseInt(e.target.value) || 0 })} className="w-full px-4 py-3 rounded-xl border border-slate-200 text-base" />
             </div>
-            <div className="space-y-1">
-              <label className="text-[10px] font-bold text-slate-500 uppercase">Hệ số nhân (VD: 0.85)</label>
-              <input type="number" step="0.01" value={editingConfig.tier1Discount} onChange={(e) => setEditingConfig({ ...editingConfig, tier1Discount: parseFloat(e.target.value) || 0 })} className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm" />
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1">
-              <label className="text-[10px] font-bold text-slate-500 uppercase">Mốc 2 (Số lượng)</label>
-              <input type="number" value={editingConfig.tier2Threshold} onChange={(e) => setEditingConfig({ ...editingConfig, tier2Threshold: parseInt(e.target.value) || 0 })} className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm" />
-            </div>
-            <div className="space-y-1">
-              <label className="text-[10px] font-bold text-slate-500 uppercase">Hệ số nhân (VD: 0.7)</label>
-              <input type="number" step="0.01" value={editingConfig.tier2Discount} onChange={(e) => setEditingConfig({ ...editingConfig, tier2Discount: parseFloat(e.target.value) || 0 })} className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm" />
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-500 uppercase">Hệ số nhân (VD: 0.85)</label>
+              <input type="number" step="0.01" value={editingConfig.tier1Discount} onChange={(e) => setEditingConfig({ ...editingConfig, tier1Discount: parseFloat(e.target.value) || 0 })} className="w-full px-4 py-3 rounded-xl border border-slate-200 text-base" />
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1">
-              <label className="text-[10px] font-bold text-slate-500 uppercase">Mốc 3 (Số lượng)</label>
-              <input type="number" value={editingConfig.tier3Threshold} onChange={(e) => setEditingConfig({ ...editingConfig, tier3Threshold: parseInt(e.target.value) || 0 })} className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm" />
+          <div className="grid grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-500 uppercase">Mốc 2 (Số lượng)</label>
+              <input type="number" value={editingConfig.tier2Threshold} onChange={(e) => setEditingConfig({ ...editingConfig, tier2Threshold: parseInt(e.target.value) || 0 })} className="w-full px-4 py-3 rounded-xl border border-slate-200 text-base" />
             </div>
-            <div className="space-y-1">
-              <label className="text-[10px] font-bold text-slate-500 uppercase">Hệ số nhân (VD: 0.6)</label>
-              <input type="number" step="0.01" value={editingConfig.tier3Discount} onChange={(e) => setEditingConfig({ ...editingConfig, tier3Discount: parseFloat(e.target.value) || 0 })} className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm" />
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-500 uppercase">Hệ số nhân (VD: 0.7)</label>
+              <input type="number" step="0.01" value={editingConfig.tier2Discount} onChange={(e) => setEditingConfig({ ...editingConfig, tier2Discount: parseFloat(e.target.value) || 0 })} className="w-full px-4 py-3 rounded-xl border border-slate-200 text-base" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-500 uppercase">Mốc 3 (Số lượng)</label>
+              <input type="number" value={editingConfig.tier3Threshold} onChange={(e) => setEditingConfig({ ...editingConfig, tier3Threshold: parseInt(e.target.value) || 0 })} className="w-full px-4 py-3 rounded-xl border border-slate-200 text-base" />
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-500 uppercase">Hệ số nhân (VD: 0.6)</label>
+              <input type="number" step="0.01" value={editingConfig.tier3Discount} onChange={(e) => setEditingConfig({ ...editingConfig, tier3Discount: parseFloat(e.target.value) || 0 })} className="w-full px-4 py-3 rounded-xl border border-slate-200 text-base" />
             </div>
           </div>
         </div>
-        <button onClick={handleSaveConfig} className="w-full bg-indigo-600 text-white py-2 rounded-xl font-bold hover:bg-indigo-700 transition-all text-sm">
+        <button onClick={handleSaveConfig} className="w-full bg-indigo-600 text-white py-3 rounded-2xl font-black hover:bg-indigo-700 transition-all text-base shadow-lg">
           Lưu cấu hình chung
         </button>
       </div>
 
       {/* Paper Types */}
-      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 space-y-4">
+      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 space-y-5">
         <h3 className="font-bold text-slate-900 flex items-center gap-2">
-          <FileText className="w-4 h-4 text-indigo-600" />
+          <FileText className="w-5 h-5 text-indigo-600" />
           Quản lý loại giấy
         </h3>
-        <div className="space-y-2">
+        <div className="space-y-3">
           {paperTypes.map(p => (
-            <div key={p.id} className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+            <div key={p.id} className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
               {editingPaperId === p.id ? (
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <input 
-                    className="w-full px-2 py-1 text-sm border rounded"
+                    className="w-full px-3 py-2 text-base border rounded-xl"
                     defaultValue={p.name}
                     id={`edit-paper-name-${p.id}`}
                   />
-                  <div className="flex gap-2">
+                  <div className="flex gap-3">
                     <input 
                       type="number"
-                      className="flex-1 px-2 py-1 text-sm border rounded"
+                      className="flex-1 px-3 py-2 text-base border rounded-xl"
                       defaultValue={p.pricePerA4}
                       id={`edit-paper-price-${p.id}`}
                     />
@@ -2059,13 +2095,13 @@ const PriceCalculator = ({
                         const price = parseInt((document.getElementById(`edit-paper-price-${p.id}`) as HTMLInputElement).value) || 0;
                         handleUpdatePaperItem(p.id, name, price);
                       }}
-                      className="px-3 py-1 bg-indigo-600 text-white text-xs font-bold rounded"
+                      className="px-4 py-2 bg-indigo-600 text-white text-sm font-black rounded-xl"
                     >
                       Lưu
                     </button>
                     <button 
                       onClick={() => setEditingPaperId(null)}
-                      className="px-3 py-1 bg-slate-200 text-slate-600 text-xs font-bold rounded"
+                      className="px-4 py-2 bg-slate-200 text-slate-600 text-sm font-black rounded-xl"
                     >
                       Hủy
                     </button>
@@ -2074,15 +2110,15 @@ const PriceCalculator = ({
               ) : (
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-bold text-slate-900">{p.name}</p>
-                    <p className="text-xs text-slate-500">{formatCurrency(p.pricePerA4)} / tờ A4</p>
+                    <p className="text-base font-bold text-slate-900">{p.name}</p>
+                    <p className="text-sm text-slate-500 font-medium">{formatCurrency(p.pricePerA4)} / tờ A4</p>
                   </div>
-                  <div className="flex gap-1">
-                    <button onClick={() => setEditingPaperId(p.id)} className="p-2 text-slate-400 hover:text-indigo-600 transition-colors">
-                      <Plus className="w-4 h-4 rotate-45" /> {/* Using Plus as a placeholder for edit if no Edit icon */}
+                  <div className="flex gap-2">
+                    <button onClick={() => setEditingPaperId(p.id)} className="p-2.5 text-slate-400 hover:text-indigo-600 transition-colors bg-white rounded-xl shadow-sm">
+                      <Plus className="w-5 h-5 rotate-45" />
                     </button>
-                    <button onClick={() => handleDeletePaper(p.id)} className="p-2 text-slate-400 hover:text-rose-600 transition-colors">
-                      <Trash2 className="w-4 h-4" />
+                    <button onClick={() => handleDeletePaper(p.id)} className="p-2.5 text-slate-400 hover:text-rose-600 transition-colors bg-white rounded-xl shadow-sm">
+                      <Trash2 className="w-5 h-5" />
                     </button>
                   </div>
                 </div>
@@ -2090,25 +2126,25 @@ const PriceCalculator = ({
             </div>
           ))}
         </div>
-        <div className="pt-4 border-t border-slate-100 space-y-3">
-          <p className="text-xs font-bold text-slate-400 uppercase">Thêm loại giấy mới</p>
-          <div className="grid grid-cols-2 gap-2">
+        <div className="pt-5 border-t border-slate-100 space-y-4">
+          <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Thêm loại giấy mới</p>
+          <div className="grid grid-cols-2 gap-3">
             <input 
               placeholder="Tên giấy" 
               value={newPaper.name} 
               onChange={(e) => setNewPaper({ ...newPaper, name: e.target.value })}
-              className="px-3 py-2 rounded-lg border border-slate-200 text-sm"
+              className="px-4 py-3 rounded-xl border border-slate-200 text-base"
             />
             <input 
               type="number" 
               placeholder="Giá / tờ A4" 
               value={newPaper.pricePerA4 || ''} 
               onChange={(e) => setNewPaper({ ...newPaper, pricePerA4: parseInt(e.target.value) || 0 })}
-              className="px-3 py-2 rounded-lg border border-slate-200 text-sm"
+              className="px-4 py-3 rounded-xl border border-slate-200 text-base"
             />
           </div>
-          <button onClick={handleAddPaper} className="w-full bg-slate-900 text-white py-2 rounded-xl font-bold hover:bg-slate-800 transition-all text-sm flex items-center justify-center gap-2">
-            <Plus className="w-4 h-4" /> Thêm giấy
+          <button onClick={handleAddPaper} className="w-full bg-slate-900 text-white py-3 rounded-2xl font-black hover:bg-slate-800 transition-all text-base flex items-center justify-center gap-3">
+            <Plus className="w-5 h-5" /> Thêm giấy mới
           </button>
         </div>
       </div>
@@ -2116,25 +2152,25 @@ const PriceCalculator = ({
 
     <div className="space-y-6">
       {/* Post Processing */}
-        <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 space-y-4">
+      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 space-y-5">
         <h3 className="font-bold text-slate-900 flex items-center gap-2">
-          <Plus className="w-4 h-4 text-indigo-600" />
+          <Plus className="w-5 h-5 text-indigo-600" />
           Quản lý gia công
         </h3>
-        <div className="space-y-2">
+        <div className="space-y-3">
           {postProcessing.map(p => (
-            <div key={p.id} className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+            <div key={p.id} className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
               {editingProcId === p.id ? (
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <input 
-                    className="w-full px-2 py-1 text-sm border rounded"
+                    className="w-full px-3 py-2 text-base border rounded-xl"
                     defaultValue={p.name}
                     id={`edit-proc-name-${p.id}`}
                   />
-                  <div className="flex gap-2">
+                  <div className="flex gap-3">
                     <input 
                       type="number"
-                      className="flex-1 px-2 py-1 text-sm border rounded"
+                      className="flex-1 px-3 py-2 text-base border rounded-xl"
                       defaultValue={p.type === 'm2' ? p.pricePerM2 : p.pricePerUnit}
                       id={`edit-proc-price-${p.id}`}
                     />
@@ -2144,13 +2180,13 @@ const PriceCalculator = ({
                         const price = parseInt((document.getElementById(`edit-proc-price-${p.id}`) as HTMLInputElement).value) || 0;
                         handleUpdateProcItem(p.id, name, p.type === 'm2' ? price : undefined, p.type === 'unit' ? price : undefined);
                       }}
-                      className="px-3 py-1 bg-indigo-600 text-white text-xs font-bold rounded"
+                      className="px-4 py-2 bg-indigo-600 text-white text-sm font-black rounded-xl"
                     >
                       Lưu
                     </button>
                     <button 
                       onClick={() => setEditingProcId(null)}
-                      className="px-3 py-1 bg-slate-200 text-slate-600 text-xs font-bold rounded"
+                      className="px-4 py-2 bg-slate-200 text-slate-600 text-sm font-black rounded-xl"
                     >
                       Hủy
                     </button>
@@ -2159,17 +2195,17 @@ const PriceCalculator = ({
               ) : (
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-bold text-slate-900">{p.name}</p>
-                    <p className="text-xs text-slate-500">
+                    <p className="text-base font-bold text-slate-900">{p.name}</p>
+                    <p className="text-sm text-slate-500 font-medium">
                       {p.pricePerM2 ? `${formatCurrency(p.pricePerM2)} / m²` : `${formatCurrency(p.pricePerUnit || 0)} / sp`}
                     </p>
                   </div>
-                  <div className="flex gap-1">
-                    <button onClick={() => setEditingProcId(p.id)} className="p-2 text-slate-400 hover:text-indigo-600 transition-colors">
-                      <Plus className="w-4 h-4 rotate-45" />
+                  <div className="flex gap-2">
+                    <button onClick={() => setEditingProcId(p.id)} className="p-2.5 text-slate-400 hover:text-indigo-600 transition-colors bg-white rounded-xl shadow-sm">
+                      <Plus className="w-5 h-5 rotate-45" />
                     </button>
-                    <button onClick={() => handleDeleteProc(p.id)} className="p-2 text-slate-400 hover:text-rose-600 transition-colors">
-                      <Trash2 className="w-4 h-4" />
+                    <button onClick={() => handleDeleteProc(p.id)} className="p-2.5 text-slate-400 hover:text-rose-600 transition-colors bg-white rounded-xl shadow-sm">
+                      <Trash2 className="w-5 h-5" />
                     </button>
                   </div>
                 </div>
@@ -2177,19 +2213,19 @@ const PriceCalculator = ({
             </div>
           ))}
         </div>
-        <div className="pt-4 border-t border-slate-100 space-y-3">
-          <p className="text-xs font-bold text-slate-400 uppercase">Thêm gia công mới</p>
+        <div className="pt-5 border-t border-slate-100 space-y-4">
+          <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Thêm gia công mới</p>
           <input 
             placeholder="Tên gia công" 
             value={newProc.name} 
             onChange={(e) => setNewProc({ ...newProc, name: e.target.value })}
-            className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm"
+            className="w-full px-4 py-3 rounded-xl border border-slate-200 text-base"
           />
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 gap-3">
             <select 
               value={newProc.type} 
               onChange={(e) => setNewProc({ ...newProc, type: e.target.value as 'm2' | 'unit' })}
-              className="px-3 py-2 rounded-lg border border-slate-200 text-sm"
+              className="px-4 py-3 rounded-xl border border-slate-200 text-base"
             >
               <option value="m2">Tính theo m²</option>
               <option value="unit">Tính theo sản phẩm</option>
@@ -2203,11 +2239,11 @@ const PriceCalculator = ({
                 if (newProc.type === 'm2') setNewProc({ ...newProc, pricePerM2: val });
                 else setNewProc({ ...newProc, pricePerUnit: val });
               }}
-              className="px-3 py-2 rounded-lg border border-slate-200 text-sm"
+              className="px-4 py-3 rounded-xl border border-slate-200 text-base"
             />
           </div>
-          <button onClick={handleAddProc} className="w-full bg-slate-900 text-white py-2 rounded-xl font-bold hover:bg-slate-800 transition-all text-sm flex items-center justify-center gap-2">
-            <Plus className="w-4 h-4" /> Thêm gia công
+          <button onClick={handleAddProc} className="w-full bg-slate-900 text-white py-3 rounded-2xl font-black hover:bg-slate-800 transition-all text-base flex items-center justify-center gap-3">
+            <Plus className="w-5 h-5" /> Thêm gia công mới
           </button>
         </div>
       </div>
@@ -2251,16 +2287,16 @@ const PriceCalculator = ({
       )}
 
       {isFloating && userRole === 'admin' && (
-        <div className="flex bg-slate-100 p-1 rounded-xl mb-4">
+        <div className="flex bg-slate-100 p-1.5 rounded-xl mb-6">
           <button 
             onClick={() => setActiveTab('calc')}
-            className={cn("flex-1 py-1.5 rounded-lg text-xs font-bold transition-all", activeTab === 'calc' ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500")}
+            className={cn("flex-1 py-2 rounded-lg text-sm font-bold transition-all", activeTab === 'calc' ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500")}
           >
             Tính giá
           </button>
           <button 
             onClick={() => setActiveTab('settings')}
-            className={cn("flex-1 py-1.5 rounded-lg text-xs font-bold transition-all", activeTab === 'settings' ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500")}
+            className={cn("flex-1 py-2 rounded-lg text-sm font-bold transition-all", activeTab === 'settings' ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500")}
           >
             Cài đặt
           </button>
@@ -2272,20 +2308,33 @@ const PriceCalculator = ({
   );
 
   if (isFloating) {
+    const sidebarWidth = isSidebarOpen ? 288 : 0;
     return (
       <motion.div
         drag
+        dragControls={dragControls}
+        dragListener={false}
         dragMomentum={false}
-        initial={{ opacity: 0, scale: 0.9, x: 100, y: 100 }}
+        initial={{ opacity: 0, scale: 0.9, x: sidebarWidth + 20, y: 50 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.9 }}
-        className="fixed z-[200] w-[90vw] md:w-[750px] lg:w-[900px] bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[90vh]"
-        style={{ top: '50px', right: '40px' }}
+        className="fixed z-[200] bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col"
+        style={{ 
+          top: '50px', 
+          left: `${sidebarWidth + 20}px`,
+          width: `${dimensions.width}px`,
+          height: `${dimensions.height}px`,
+          maxHeight: '90vh',
+          maxWidth: `calc(100vw - ${sidebarWidth + 40}px)`
+        }}
       >
-        <div className="bg-slate-900 p-4 flex justify-between items-center cursor-move">
+        <div 
+          onPointerDown={(e) => dragControls.start(e)}
+          className="bg-slate-900 p-4 flex justify-between items-center cursor-move"
+        >
           <div className="flex items-center gap-2 text-white">
-            <Calculator className="w-5 h-5 text-indigo-400" />
-            <span className="font-bold text-sm">Tính giá in nhanh</span>
+            <Calculator className="w-6 h-6 text-indigo-400" />
+            <span className="font-black text-base tracking-tight">Tính giá in nhanh</span>
           </div>
           <button 
             onClick={onClose}
@@ -2296,6 +2345,15 @@ const PriceCalculator = ({
         </div>
         <div className="flex-1 overflow-y-auto scrollbar-hide">
           {finalContent}
+        </div>
+        
+        {/* Resize Handle */}
+        <div 
+          onMouseDown={handleResizeStart}
+          className="absolute bottom-0 right-0 w-6 h-6 cursor-nwse-resize flex items-center justify-center group"
+        >
+          <div className="w-1.5 h-1.5 bg-slate-300 rounded-full group-hover:bg-indigo-500 transition-colors" />
+          <div className="absolute bottom-1 right-1 w-3 h-3 border-r-2 border-b-2 border-slate-200 rounded-br-sm group-hover:border-indigo-400 transition-colors" />
         </div>
       </motion.div>
     );
@@ -2556,37 +2614,21 @@ export default function App() {
     };
   }, [user]);
 
-  const handleUpdatePaper = async (updated: PaperType[]) => {
+  const handleUpdatePaper = async (paper: PaperType, action: 'add' | 'update' | 'delete') => {
     if (profile?.role !== 'admin') return;
-    // Simple way: delete all and re-add or just update individual
-    // For simplicity in this UI, we'll just set individual docs
-    const currentIds = paperTypes.map(p => p.id);
-    const newIds = updated.map(p => p.id);
-    
-    // Delete removed
-    for (const id of currentIds) {
-      if (!newIds.includes(id)) {
-        await deleteDoc(doc(db, 'settings_paper', id));
-      }
-    }
-    // Add/Update
-    for (const p of updated) {
-      await setDoc(doc(db, 'settings_paper', p.id), p);
+    if (action === 'delete') {
+      await deleteDoc(doc(db, 'settings_paper', paper.id));
+    } else {
+      await setDoc(doc(db, 'settings_paper', paper.id), paper);
     }
   };
 
-  const handleUpdateProcessing = async (updated: PostProcessingType[]) => {
+  const handleUpdateProcessing = async (proc: PostProcessingType, action: 'add' | 'update' | 'delete') => {
     if (profile?.role !== 'admin') return;
-    const currentIds = postProcessing.map(p => p.id);
-    const newIds = updated.map(p => p.id);
-    
-    for (const id of currentIds) {
-      if (!newIds.includes(id)) {
-        await deleteDoc(doc(db, 'settings_processing', id));
-      }
-    }
-    for (const p of updated) {
-      await setDoc(doc(db, 'settings_processing', p.id), p);
+    if (action === 'delete') {
+      await deleteDoc(doc(db, 'settings_processing', proc.id));
+    } else {
+      await setDoc(doc(db, 'settings_processing', proc.id), proc);
     }
   };
 
@@ -2997,6 +3039,7 @@ export default function App() {
               onUpdatePaper={handleUpdatePaper}
               onUpdateProcessing={handleUpdateProcessing}
               onUpdateConfig={handleUpdatePrintConfig}
+              isSidebarOpen={isSidebarOpen}
             />
           )}
         </AnimatePresence>
