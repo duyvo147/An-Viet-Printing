@@ -137,7 +137,7 @@ const Dashboard = ({ orders, supplierOrders, userRole, users = [] }: { orders: O
   const stats = useMemo(() => {
     const { orders: fOrders, supplierOrders: fSupplierOrders } = filteredData;
 
-    const totalRevenue = fOrders.reduce((sum, o) => sum + o.totalAmount, 0);
+    const totalRevenue = fOrders.filter(o => o.paymentStatus === 'paid').reduce((sum, o) => sum + o.totalAmount, 0);
     const totalPaid = fOrders.reduce((sum, o) => sum + o.paidAmount, 0);
     const totalDebt = fOrders.reduce((sum, o) => sum + o.debtAmount, 0);
     
@@ -174,7 +174,7 @@ const Dashboard = ({ orders, supplierOrders, userRole, users = [] }: { orders: O
 
       chartData.push({
         name: dateStr,
-        revenue: dayOrders.reduce((sum, o) => sum + o.totalAmount, 0),
+        revenue: dayOrders.filter(o => o.paymentStatus === 'paid').reduce((sum, o) => sum + o.totalAmount, 0),
         expenses: dayExpenses.reduce((sum, o) => sum + o.totalAmount, 0),
         count: dayOrders.length
       });
