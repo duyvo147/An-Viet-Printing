@@ -370,7 +370,7 @@ const PrintModal = ({ order, type, onClose }: { order: Order, type: 'quote' | 'd
                   <tr key={i}>
                     <td className="py-4">
                       <p className="font-bold text-slate-900">{item.name}</p>
-                      <p className="text-xs text-slate-500 mt-1 italic">{item.printingInfo}</p>
+                      {type === 'quote' && <p className="text-xs text-slate-500 mt-1 italic">{item.printingInfo}</p>}
                     </td>
                     <td className="py-4 text-center text-slate-900">{item.unit || 'Cái'}</td>
                     <td className="py-4 text-center text-slate-900">{item.quantity}</td>
