@@ -1,1 +1,64 @@
 @import "tailwindcss";
+
+@media print {
+  body {
+    background: white !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  /* Hide everything by default */
+  body * {
+    visibility: hidden !important;
+  }
+
+  /* Show the print modal and all its children */
+  .print-modal-container, 
+  .print-modal-container * {
+    visibility: visible !important;
+  }
+
+  /* Ensure the modal container is positioned correctly at the top of the page */
+  .print-modal-container {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    display: block !important;
+    background: white !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    z-index: 9999 !important;
+  }
+
+  .print-modal-content {
+    width: 100% !important;
+    max-width: none !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    box-shadow: none !important;
+    border: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  /* Hide the modal header (buttons) during print */
+  .print-modal-header,
+  .print-modal-header * {
+    visibility: hidden !important;
+    display: none !important;
+  }
+
+  .print-modal-body,
+  .print-modal-body * {
+    visibility: visible !important;
+  }
+
+  /* Force background colors to print */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}

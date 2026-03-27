@@ -297,9 +297,9 @@ const PrintModal = ({ order, type, onClose }: { order: Order, type: 'quote' | 'd
   };
 
   return (
-    <div className="fixed inset-0 z-[100] bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 print:p-0 print:bg-white">
-      <div className="bg-white w-full max-w-6xl max-h-[90vh] overflow-y-auto rounded-3xl shadow-2xl flex flex-col print:shadow-none print:max-h-none print:rounded-none">
-        <div className="p-6 border-b border-slate-100 flex justify-between items-center print:hidden">
+    <div className="fixed inset-0 z-[100] bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 print:p-0 print:bg-white print:static print:block print-modal-container">
+      <div className="bg-white w-full max-w-6xl max-h-[90vh] overflow-y-auto rounded-3xl shadow-2xl flex flex-col print:shadow-none print:max-h-none print:rounded-none print:overflow-visible print-modal-content">
+        <div className="p-6 border-b border-slate-100 flex justify-between items-center print:hidden print-modal-header">
           <h2 className="text-xl font-bold text-slate-900">
             {type === 'quote' ? 'Xem trước Báo giá' : 'Xem trước Phiếu giao hàng'}
           </h2>
@@ -316,8 +316,8 @@ const PrintModal = ({ order, type, onClose }: { order: Order, type: 'quote' | 'd
           </div>
         </div>
         
-        <div className="p-12 print:p-0">
-          <div className="max-w-[1000px] mx-auto bg-white">
+        <div className="p-12 print:p-0 print-modal-body">
+          <div className="max-w-[1000px] mx-auto bg-white print:max-w-none print:w-full">
             <div className="flex justify-between items-start mb-10 border-b-2 border-orange-500 pb-8">
               <div className="flex items-center">
                 <div className="flex-1">
@@ -414,19 +414,6 @@ const PrintModal = ({ order, type, onClose }: { order: Order, type: 'quote' | 'd
               </div>
             )}
 
-            {type === 'quote' && (
-              <div className="grid grid-cols-2 gap-12 pt-12 border-t border-slate-100">
-                <div className="text-center">
-                  <p className="font-bold text-slate-900 mb-20">Khách hàng</p>
-                  <p className="text-slate-400 text-sm">(Ký và ghi rõ họ tên)</p>
-                </div>
-                <div className="text-center">
-                  <p className="font-bold text-slate-900 mb-20">Người báo giá</p>
-                  <p className="text-slate-400 text-sm">(Ký và ghi rõ họ tên)</p>
-                </div>
-              </div>
-            )}
-
             {type === 'delivery' && (
               <div className="grid grid-cols-2 gap-12 pt-12 border-t border-slate-100">
                 <div className="text-center">
@@ -450,7 +437,7 @@ const PrintModal = ({ order, type, onClose }: { order: Order, type: 'quote' | 'd
   );
 };
 
-const OrderList = ({ orders, onEdit, onDelete, title = 'Quản lý đơn hàng', userRole, users = [] }: { orders: Order[], onEdit: (o: Order) => void, onDelete?: (id: string) => void, title?: string, userRole?: string, users?: UserProfile[] }) => {
+const OrderList = ({ orders, onEdit, onDelete, title = 'Quản lý đơn hàng', userRole, users = [], onPrint }: { orders: Order[], onEdit: (o: Order) => void, onDelete?: (id: string) => void, title?: string, userRole?: string, users?: UserProfile[], onPrint: (order: Order, type: 'quote' | 'delivery') => void }) => {
   const [filter, setFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState<OrderStatus | 'all'>('all');
   const [creatorFilter, setCreatorFilter] = useState<string | 'all'>('all');
@@ -458,7 +445,6 @@ const OrderList = ({ orders, onEdit, onDelete, title = 'Quản lý đơn hàng',
     start: '',
     end: ''
   });
-  const [printOrder, setPrintOrder] = useState<{ order: Order, type: 'quote' | 'delivery' } | null>(null);
 
   const getCreatorName = (uid: string) => {
     const creator = users.find(u => u.uid === uid);
@@ -636,14 +622,14 @@ const OrderList = ({ orders, onEdit, onDelete, title = 'Quản lý đơn hàng',
                   <td className="px-6 py-4 text-right">
                     <div className="flex items-center justify-end gap-2">
                       <button 
-                        onClick={() => setPrintOrder({ order, type: 'quote' })}
+                        onClick={() => onPrint(order, 'quote')}
                         title="In báo giá"
                         className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
                       >
                         <Receipt className="w-4 h-4" />
                       </button>
                       <button 
-                        onClick={() => setPrintOrder({ order, type: 'delivery' })}
+                        onClick={() => onPrint(order, 'delivery')}
                         title="Phiếu giao hàng"
                         className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all"
                       >
@@ -676,19 +662,11 @@ const OrderList = ({ orders, onEdit, onDelete, title = 'Quản lý đơn hàng',
           </table>
         </div>
       </div>
-
-      {printOrder && (
-        <PrintModal 
-          order={printOrder.order} 
-          type={printOrder.type} 
-          onClose={() => setPrintOrder(null)} 
-        />
-      )}
     </div>
   );
 };
 
-const OrderForm = ({ initialOrder, orders = [], onSave, onCancel, userRole }: { initialOrder?: Order, orders?: Order[], onSave: (o: any) => void, onCancel: () => void, userRole?: string }) => {
+const OrderForm = ({ initialOrder, orders = [], onSave, onCancel, userRole, onPrint }: { initialOrder?: Order, orders?: Order[], onSave: (o: any) => void, onCancel: () => void, userRole?: string, onPrint: (order: Order, type: 'quote' | 'delivery') => void }) => {
   const isStaffEdit = userRole === 'staff' && !!initialOrder;
 
   const [formData, setFormData] = useState({
@@ -703,7 +681,6 @@ const OrderForm = ({ initialOrder, orders = [], onSave, onCancel, userRole }: { 
     vatRate: initialOrder?.vatRate ?? 10,
     items: initialOrder?.items || [{ name: '', unit: 'Cái', quantity: 1, price: 0, printingInfo: '' }]
   });
-  const [printOrder, setPrintOrder] = useState<{ order: Order, type: 'quote' | 'delivery' } | null>(null);
 
   const subTotal = formData.items.reduce((sum, item) => sum + (item.quantity * item.price), 0);
   const vatAmount = Math.round(subTotal * (formData.vatRate / 100));
@@ -765,7 +742,7 @@ const OrderForm = ({ initialOrder, orders = [], onSave, onCancel, userRole }: { 
             <>
               <button 
                 type="button"
-                onClick={() => setPrintOrder({ order: initialOrder, type: 'quote' })}
+                onClick={() => onPrint(initialOrder, 'quote')}
                 className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all flex items-center gap-2 px-3"
               >
                 <Receipt className="w-5 h-5" />
@@ -773,7 +750,7 @@ const OrderForm = ({ initialOrder, orders = [], onSave, onCancel, userRole }: { 
               </button>
               <button 
                 type="button"
-                onClick={() => setPrintOrder({ order: initialOrder, type: 'delivery' })}
+                onClick={() => onPrint(initialOrder, 'delivery')}
                 className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-xl transition-all flex items-center gap-2 px-3"
               >
                 <Truck className="w-5 h-5" />
@@ -1027,14 +1004,6 @@ const OrderForm = ({ initialOrder, orders = [], onSave, onCancel, userRole }: { 
           </button>
         </div>
       </form>
-
-      {printOrder && (
-        <PrintModal 
-          order={printOrder.order} 
-          type={printOrder.type} 
-          onClose={() => setPrintOrder(null)} 
-        />
-      )}
     </div>
   );
 };
@@ -2528,6 +2497,7 @@ export default function App() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [orders, setOrders] = useState<Order[]>([]);
+  const [printOrder, setPrintOrder] = useState<{ order: Order, type: 'quote' | 'delivery' } | null>(null);
   const [supplierOrders, setSupplierOrders] = useState<SupplierOrder[]>([]);
   const [logs, setLogs] = useState<ActivityLog[]>([]);
   const [users, setUsers] = useState<UserProfile[]>([]);
@@ -3000,14 +2970,15 @@ export default function App() {
                     onDelete={handleDeleteOrder}
                     userRole={profile?.role}
                     users={users}
+                    onPrint={(order, type) => setPrintOrder({ order, type })}
                   />
                 } />
                 <Route path="/orders/new" element={
-                  <OrderForm orders={orders} onSave={handleSaveOrder} onCancel={() => navigate(-1)} userRole={profile?.role} />
+                  <OrderForm orders={orders} onSave={handleSaveOrder} onCancel={() => navigate(-1)} userRole={profile?.role} onPrint={(order, type) => setPrintOrder({ order, type })} />
                 } />
                 <Route path="/orders/edit" element={
                   editingOrder ? (
-                    <OrderForm orders={orders} initialOrder={editingOrder} onSave={handleSaveOrder} onCancel={() => { setEditingOrder(null); navigate(-1); }} userRole={profile?.role} />
+                    <OrderForm orders={orders} initialOrder={editingOrder} onSave={handleSaveOrder} onCancel={() => { setEditingOrder(null); navigate(-1); }} userRole={profile?.role} onPrint={(order, type) => setPrintOrder({ order, type })} />
                   ) : <Navigate to="/orders" />
                 } />
                 <Route path="/suppliers" element={
@@ -3035,6 +3006,7 @@ export default function App() {
                     onDelete={handleDeleteOrder}
                     userRole={profile?.role}
                     users={users}
+                    onPrint={(order, type) => setPrintOrder({ order, type })}
                   />
                 } />
                 <Route path="/logs" element={
@@ -3061,6 +3033,13 @@ export default function App() {
               onUpdateProcessing={handleUpdateProcessing}
               onUpdateConfig={handleUpdatePrintConfig}
               isSidebarOpen={isSidebarOpen}
+            />
+          )}
+          {printOrder && (
+            <PrintModal 
+              order={printOrder.order} 
+              type={printOrder.type} 
+              onClose={() => setPrintOrder(null)} 
             />
           )}
         </AnimatePresence>
