@@ -418,11 +418,9 @@ const PrintModal = ({ order, type, onClose }: { order: Order, type: 'quote' | 'd
               <div className="grid grid-cols-2 gap-12 pt-12 border-t border-slate-100">
                 <div className="text-center">
                   <p className="font-bold text-slate-900 mb-20">Người nhận hàng</p>
-                  <p className="text-slate-400 text-sm">(Ký và ghi rõ họ tên)</p>
                 </div>
                 <div className="text-center">
                   <p className="font-bold text-slate-900 mb-20">Người lập phiếu</p>
-                  <p className="text-slate-400 text-sm">(Ký và ghi rõ họ tên)</p>
                 </div>
               </div>
             )}
