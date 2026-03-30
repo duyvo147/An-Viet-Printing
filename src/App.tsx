@@ -352,7 +352,8 @@ const PrintModal = ({ order, type, onClose }: { order: Order, type: 'quote' | 'd
             <table className="w-full mb-10">
               <thead>
                 <tr className="border-b-2 border-slate-900">
-                  <th className={cn("py-4 text-left text-sm font-black uppercase", type === 'delivery' ? "w-[40%]" : "w-[40%]")}>Hạng mục</th>
+                  <th className="py-4 text-center text-sm font-black uppercase w-[5%]">STT</th>
+                  <th className={cn("py-4 text-left text-sm font-black uppercase", type === 'delivery' ? "w-[35%]" : "w-[35%]")}>Hạng mục</th>
                   <th className={cn("py-4 text-center text-sm font-black uppercase", type === 'delivery' ? "w-[15%]" : "w-[10%]")}>ĐVT</th>
                   <th className={cn("py-4 text-center text-sm font-black uppercase", type === 'delivery' ? "w-[15%]" : "w-[10%]")}>SL</th>
                   {type === 'quote' ? (
@@ -368,6 +369,7 @@ const PrintModal = ({ order, type, onClose }: { order: Order, type: 'quote' | 'd
               <tbody className="divide-y divide-slate-100">
                 {order.items.map((item, i) => (
                   <tr key={i}>
+                    <td className="py-4 text-center text-slate-900 font-bold">{i + 1}</td>
                     <td className="py-4">
                       <p className="font-black text-slate-900">{item.name}</p>
                       {type === 'quote' && <p className="text-xs text-slate-700 mt-1 italic font-bold">{item.printingInfo}</p>}
@@ -863,7 +865,8 @@ const OrderForm = ({ initialOrder, orders = [], onSave, onCancel, userRole, onPr
               </button>
             )}
           </div>
-          <div className="hidden md:grid grid-cols-[1fr_80px_80px_120px_120px_40px] gap-3 px-4 mb-2">
+          <div className="hidden md:grid grid-cols-[40px_1fr_80px_80px_120px_120px_40px] gap-3 px-4 mb-2">
+            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">STT</span>
             <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Tên sản phẩm</span>
             <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">ĐVT</span>
             <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">SL</span>
@@ -874,7 +877,10 @@ const OrderForm = ({ initialOrder, orders = [], onSave, onCancel, userRole, onPr
           <div className="space-y-4">
             {formData.items.map((item, index) => (
               <div key={index} className="p-4 bg-slate-50 rounded-2xl space-y-3 animate-in slide-in-from-right-4 duration-200">
-                <div className="grid grid-cols-1 md:grid-cols-[1fr_80px_80px_120px_120px_40px] gap-3 items-start">
+                <div className="grid grid-cols-1 md:grid-cols-[40px_1fr_80px_80px_120px_120px_40px] gap-3 items-start">
+                  <div className="hidden md:flex items-center justify-center h-10 font-bold text-slate-400 text-sm">
+                    {index + 1}
+                  </div>
                   <input 
                     required
                     disabled={isStaffEdit}
