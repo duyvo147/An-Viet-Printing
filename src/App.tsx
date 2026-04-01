@@ -133,15 +133,15 @@ const Dashboard = ({ orders, supplierOrders, userRole, users = [] }: { orders: O
       return isWithinInterval(date, { start, end });
     });
 
-    // Revenue is based on paidAt date
+    // Revenue is based on paidAt date (fallback to createdAt for legacy data)
     const revenueOrders = orders.filter(o => {
-      if (o.paymentStatus !== 'paid' || !o.paidAt) return false;
-      const paidDate = o.paidAt.toDate();
-      return isWithinInterval(paidDate, { start, end });
+      if (o.paymentStatus !== 'paid') return false;
+      const date = (o.paidAt || o.createdAt).toDate();
+      return isWithinInterval(date, { start, end });
     });
     const totalRevenue = revenueOrders.reduce((sum, o) => sum + o.totalAmount, 0);
 
-    // Expenses are based on paidAt date (or createdAt if paidAt is missing but it's paid)
+    // Expenses are based on paidAt date (fallback to createdAt for legacy data)
     const expenseOrders = supplierOrders.filter(o => {
       if (o.paymentStatus !== 'paid') return false;
       const date = (o.paidAt || o.createdAt).toDate();
@@ -172,9 +172,9 @@ const Dashboard = ({ orders, supplierOrders, userRole, users = [] }: { orders: O
       const dayEnd = endOfDay(date);
       
       const dayRevenue = orders.filter(o => {
-        if (o.paymentStatus !== 'paid' || !o.paidAt) return false;
-        const paidDate = o.paidAt.toDate();
-        return isWithinInterval(paidDate, { start: dayStart, end: dayEnd });
+        if (o.paymentStatus !== 'paid') return false;
+        const date = (o.paidAt || o.createdAt).toDate();
+        return isWithinInterval(date, { start: dayStart, end: dayEnd });
       }).reduce((sum, o) => sum + o.totalAmount, 0);
 
       const dayExpenses = supplierOrders.filter(o => {
