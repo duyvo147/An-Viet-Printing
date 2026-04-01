@@ -54,7 +54,7 @@ import { twMerge } from 'tailwind-merge';
 
 import { auth, db, loginWithGoogle, logout, handleFirestoreError, OperationType } from './firebase';
 import ErrorBoundary from './components/ErrorBoundary';
-import { UserProfile, Order, ActivityLog, OrderStatus, PaymentStatus, OrderItem, SupplierOrder, SupplierOrderStatus, MaterialType, PaperType, PostProcessingType, PrintConfig } from './types';
+import { UserRole, UserProfile, Order, ActivityLog, OrderStatus, PaymentStatus, OrderItem, SupplierOrder, SupplierOrderStatus, MaterialType, PaperType, PostProcessingType, PrintConfig } from './types';
 
 // --- Utility ---
 function cn(...inputs: ClassValue[]) {
@@ -492,10 +492,12 @@ const OrderList = ({ orders, onEdit, onDelete, title = 'Quản lý đơn hàng',
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <h1 className="text-2xl font-bold text-slate-900">{title}</h1>
-        <Link to="/orders/new" className="bg-indigo-600 text-white px-4 py-2 rounded-xl flex items-center gap-2 hover:bg-indigo-700 transition-all shadow-md shadow-indigo-100">
-          <Plus className="w-5 h-5" />
-          Tạo đơn mới
-        </Link>
+        {userRole !== 'production' && (
+          <Link to="/orders/new" className="bg-indigo-600 text-white px-4 py-2 rounded-xl flex items-center gap-2 hover:bg-indigo-700 transition-all shadow-md shadow-indigo-100">
+            <Plus className="w-5 h-5" />
+            Tạo đơn mới
+          </Link>
+        )}
       </div>
 
       <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex flex-col gap-4">
@@ -575,10 +577,16 @@ const OrderList = ({ orders, onEdit, onDelete, title = 'Quản lý đơn hàng',
             <thead>
               <tr className="bg-slate-50 border-bottom border-slate-100">
                 <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Khách hàng</th>
-                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Mã VAT</th>
-                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Tổng tiền</th>
+                {userRole !== 'production' && (
+                  <>
+                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Mã VAT</th>
+                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Tổng tiền</th>
+                  </>
+                )}
                 <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Trạng thái</th>
-                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Thanh toán</th>
+                {userRole !== 'production' && (
+                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Thanh toán</th>
+                )}
                 <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Người tạo</th>
                 <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Ngày tạo</th>
                 <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider"></th>
@@ -591,8 +599,12 @@ const OrderList = ({ orders, onEdit, onDelete, title = 'Quản lý đơn hàng',
                     <p className="font-bold text-slate-900">{order.customerName}</p>
                     <p className="text-xs text-indigo-600 font-mono font-bold">{order.orderCode || `AVP-OLD-${order.id.slice(-4).toUpperCase()}`}</p>
                   </td>
-                  <td className="px-6 py-4 text-sm text-slate-600 font-mono">{order.vatInvoiceCode || '-'}</td>
-                  <td className="px-6 py-4 font-semibold text-slate-900">{formatCurrency(order.totalAmount)}</td>
+                  {userRole !== 'production' && (
+                    <>
+                      <td className="px-6 py-4 text-sm text-slate-600 font-mono">{order.vatInvoiceCode || '-'}</td>
+                      <td className="px-6 py-4 font-semibold text-slate-900">{formatCurrency(order.totalAmount)}</td>
+                    </>
+                  )}
                   <td className="px-6 py-4">
                     <span className={cn(
                       "text-xs font-bold px-2 py-1 rounded-full",
@@ -605,16 +617,18 @@ const OrderList = ({ orders, onEdit, onDelete, title = 'Quản lý đơn hàng',
                        order.status === 'completed' ? 'Hoàn thành' : 'Đã hủy'}
                     </span>
                   </td>
-                  <td className="px-6 py-4">
-                    <span className={cn(
-                      "text-xs font-bold px-2 py-1 rounded-full",
-                      order.paymentStatus === 'paid' ? "bg-emerald-50 text-emerald-600" :
-                      order.paymentStatus === 'partial' ? "bg-amber-50 text-amber-600" : "bg-rose-50 text-rose-600"
-                    )}>
-                      {order.paymentStatus === 'paid' ? 'Đã trả' : 
-                       order.paymentStatus === 'partial' ? 'Trả một phần' : 'Chưa trả'}
-                    </span>
-                  </td>
+                  {userRole !== 'production' && (
+                    <td className="px-6 py-4">
+                      <span className={cn(
+                        "text-xs font-bold px-2 py-1 rounded-full",
+                        order.paymentStatus === 'paid' ? "bg-emerald-50 text-emerald-600" :
+                        order.paymentStatus === 'partial' ? "bg-amber-50 text-amber-600" : "bg-rose-50 text-rose-600"
+                      )}>
+                        {order.paymentStatus === 'paid' ? 'Đã trả' : 
+                         order.paymentStatus === 'partial' ? 'Trả một phần' : 'Chưa trả'}
+                      </span>
+                    </td>
+                  )}
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-2">
                       <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center">
@@ -628,20 +642,24 @@ const OrderList = ({ orders, onEdit, onDelete, title = 'Quản lý đơn hàng',
                   <td className="px-6 py-4 text-sm text-slate-500">{format(order.createdAt.toDate(), 'dd/MM/yyyy')}</td>
                   <td className="px-6 py-4 text-right">
                     <div className="flex items-center justify-end gap-2">
-                      <button 
-                        onClick={() => onPrint(order, 'quote')}
-                        title="In báo giá"
-                        className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
-                      >
-                        <Receipt className="w-4 h-4" />
-                      </button>
-                      <button 
-                        onClick={() => onPrint(order, 'delivery')}
-                        title="Phiếu giao hàng"
-                        className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all"
-                      >
-                        <Truck className="w-4 h-4" />
-                      </button>
+                      {userRole !== 'production' && (
+                        <>
+                          <button 
+                            onClick={() => onPrint(order, 'quote')}
+                            title="In báo giá"
+                            className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
+                          >
+                            <Receipt className="w-4 h-4" />
+                          </button>
+                          <button 
+                            onClick={() => onPrint(order, 'delivery')}
+                            title="Phiếu giao hàng"
+                            className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all"
+                          >
+                            <Truck className="w-4 h-4" />
+                          </button>
+                        </>
+                      )}
                       <button 
                         onClick={() => onEdit(order)}
                         className="text-indigo-600 hover:text-indigo-800 font-medium text-sm transition-colors px-3 py-1 hover:bg-indigo-50 rounded-lg"
@@ -675,6 +693,8 @@ const OrderList = ({ orders, onEdit, onDelete, title = 'Quản lý đơn hàng',
 
 const OrderForm = ({ initialOrder, orders = [], onSave, onCancel, userRole, onPrint }: { initialOrder?: Order, orders?: Order[], onSave: (o: any) => void, onCancel: () => void, userRole?: string, onPrint: (order: Order, type: 'quote' | 'delivery') => void }) => {
   const isStaffEdit = userRole === 'staff' && !!initialOrder;
+  const isProduction = userRole === 'production';
+  const isReadOnly = isProduction; // Production can only view details and update status
 
   const [formData, setFormData] = useState({
     customerName: initialOrder?.customerName || '',
@@ -743,9 +763,9 @@ const OrderForm = ({ initialOrder, orders = [], onSave, onCancel, userRole, onPr
   return (
     <div className="max-w-6xl mx-auto bg-white p-8 rounded-3xl shadow-xl border border-slate-100 animate-in zoom-in-95 duration-300">
       <div className="flex justify-between items-center mb-8">
-        <h1 className="text-2xl font-bold text-slate-900">{initialOrder ? 'Cập nhật đơn hàng' : 'Tạo đơn hàng mới'}</h1>
+        <h1 className="text-2xl font-bold text-slate-900">{initialOrder ? 'Chi tiết đơn hàng' : 'Tạo đơn hàng mới'}</h1>
         <div className="flex items-center gap-2">
-          {initialOrder && (
+          {initialOrder && !isProduction && (
             <>
               <button 
                 type="button"
@@ -779,7 +799,7 @@ const OrderForm = ({ initialOrder, orders = [], onSave, onCancel, userRole, onPr
               required
               type="text" 
               list="customer-suggestions"
-              disabled={isStaffEdit}
+              disabled={isStaffEdit || isProduction}
               className="w-full px-4 py-3 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 disabled:opacity-60"
               value={formData.customerName}
               onChange={(e) => {
@@ -808,7 +828,7 @@ const OrderForm = ({ initialOrder, orders = [], onSave, onCancel, userRole, onPr
             <label className="text-sm font-bold text-slate-700">Số điện thoại</label>
             <input 
               type="text" 
-              disabled={isStaffEdit}
+              disabled={isStaffEdit || isProduction}
               className="w-full px-4 py-3 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 disabled:opacity-60"
               value={formData.customerPhone}
               onChange={(e) => setFormData({ ...formData, customerPhone: e.target.value })}
@@ -818,32 +838,36 @@ const OrderForm = ({ initialOrder, orders = [], onSave, onCancel, userRole, onPr
             <label className="text-sm font-bold text-slate-700">Địa chỉ khách hàng</label>
             <input 
               type="text" 
-              disabled={isStaffEdit}
+              disabled={isStaffEdit || isProduction}
               placeholder="VD: 123 Đường ABC, Quận X, TP. HCM"
               className="w-full px-4 py-3 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 disabled:opacity-60"
               value={formData.customerAddress}
               onChange={(e) => setFormData({ ...formData, customerAddress: e.target.value })}
             />
           </div>
-          <div className="space-y-2">
-            <label className="text-sm font-bold text-slate-700">Mã số thuế khách hàng</label>
-            <input 
-              type="text" 
-              disabled={isStaffEdit}
-              className="w-full px-4 py-3 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 font-mono disabled:opacity-60"
-              value={formData.customerTaxId}
-              onChange={(e) => setFormData({ ...formData, customerTaxId: e.target.value })}
-            />
-          </div>
-          <div className="space-y-2">
-            <label className="text-sm font-bold text-slate-700">Mã hóa đơn VAT</label>
-            <input 
-              type="text" 
-              className="w-full px-4 py-3 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 font-mono"
-              value={formData.vatInvoiceCode}
-              onChange={(e) => setFormData({ ...formData, vatInvoiceCode: e.target.value })}
-            />
-          </div>
+          {!isProduction && (
+            <>
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-slate-700">Mã số thuế khách hàng</label>
+                <input 
+                  type="text" 
+                  disabled={isStaffEdit}
+                  className="w-full px-4 py-3 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 font-mono disabled:opacity-60"
+                  value={formData.customerTaxId}
+                  onChange={(e) => setFormData({ ...formData, customerTaxId: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-slate-700">Mã hóa đơn VAT</label>
+                <input 
+                  type="text" 
+                  className="w-full px-4 py-3 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 font-mono"
+                  value={formData.vatInvoiceCode}
+                  onChange={(e) => setFormData({ ...formData, vatInvoiceCode: e.target.value })}
+                />
+              </div>
+            </>
+          )}
           <div className="space-y-2">
             <label className="text-sm font-bold text-slate-700">Trạng thái đơn hàng</label>
             <select 
@@ -877,20 +901,29 @@ const OrderForm = ({ initialOrder, orders = [], onSave, onCancel, userRole, onPr
             <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Tên sản phẩm</span>
             <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">ĐVT</span>
             <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">SL</span>
-            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Đơn giá</span>
-            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Thành tiền</span>
+            {!isProduction && (
+              <>
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Đơn giá</span>
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Thành tiền</span>
+              </>
+            )}
             <span></span>
           </div>
           <div className="space-y-4">
             {formData.items.map((item, index) => (
               <div key={index} className="p-4 bg-slate-50 rounded-2xl space-y-3 animate-in slide-in-from-right-4 duration-200">
-                <div className="grid grid-cols-1 md:grid-cols-[40px_1fr_80px_80px_120px_120px_40px] gap-3 items-start">
+                <div className={cn(
+                  "grid grid-cols-1 gap-3 items-start",
+                  isProduction 
+                    ? "md:grid-cols-[40px_1fr_80px_80px_40px]" 
+                    : "md:grid-cols-[40px_1fr_80px_80px_120px_120px_40px]"
+                )}>
                   <div className="hidden md:flex items-center justify-center h-10 font-bold text-slate-400 text-sm">
                     {index + 1}
                   </div>
                   <input 
                     required
-                    disabled={isStaffEdit}
+                    disabled={isStaffEdit || isProduction}
                     placeholder="Tên sản phẩm"
                     className="w-full px-4 py-2 bg-white border-none rounded-xl focus:ring-2 focus:ring-indigo-500 disabled:opacity-60"
                     value={item.name}
@@ -898,7 +931,7 @@ const OrderForm = ({ initialOrder, orders = [], onSave, onCancel, userRole, onPr
                   />
                   <input 
                     required
-                    disabled={isStaffEdit}
+                    disabled={isStaffEdit || isProduction}
                     placeholder="ĐVT"
                     className="w-full px-4 py-2 bg-white border-none rounded-xl focus:ring-2 focus:ring-indigo-500 disabled:opacity-60 text-center"
                     value={item.unit}
@@ -906,26 +939,30 @@ const OrderForm = ({ initialOrder, orders = [], onSave, onCancel, userRole, onPr
                   />
                   <input 
                     required
-                    disabled={isStaffEdit}
+                    disabled={isStaffEdit || isProduction}
                     type="number"
                     placeholder="SL"
                     className="w-full px-4 py-2 bg-white border-none rounded-xl focus:ring-2 focus:ring-indigo-500 disabled:opacity-60 text-center"
                     value={item.quantity}
                     onChange={(e) => handleItemChange(index, 'quantity', Number(e.target.value))}
                   />
-                  <input 
-                    required
-                    disabled={isStaffEdit}
-                    type="number"
-                    placeholder="Đơn giá"
-                    className="w-full px-4 py-2 bg-white border-none rounded-xl focus:ring-2 focus:ring-indigo-500 disabled:opacity-60 text-right"
-                    value={item.price}
-                    onChange={(e) => handleItemChange(index, 'price', Number(e.target.value))}
-                  />
-                  <div className="hidden md:flex items-center justify-end h-10 px-2 font-bold text-slate-900 text-sm">
-                    {formatCurrency(item.quantity * item.price)}
-                  </div>
-                  {!isStaffEdit && (
+                  {!isProduction && (
+                    <>
+                      <input 
+                        required
+                        disabled={isStaffEdit}
+                        type="number"
+                        placeholder="Đơn giá"
+                        className="w-full px-4 py-2 bg-white border-none rounded-xl focus:ring-2 focus:ring-indigo-500 disabled:opacity-60 text-right"
+                        value={item.price}
+                        onChange={(e) => handleItemChange(index, 'price', Number(e.target.value))}
+                      />
+                      <div className="hidden md:flex items-center justify-end h-10 px-2 font-bold text-slate-900 text-sm">
+                        {formatCurrency(item.quantity * item.price)}
+                      </div>
+                    </>
+                  )}
+                  {!isStaffEdit && !isProduction && (
                     <button 
                       type="button" 
                       onClick={() => handleRemoveItem(index)}
@@ -936,7 +973,7 @@ const OrderForm = ({ initialOrder, orders = [], onSave, onCancel, userRole, onPr
                   )}
                 </div>
                 <textarea 
-                  disabled={isStaffEdit}
+                  disabled={isStaffEdit || isProduction}
                   placeholder="Thông tin in ấn (VD: Kích thước, chất liệu, gia công...)"
                   className="w-full px-4 py-2 bg-white border-none rounded-xl focus:ring-2 focus:ring-indigo-500 text-sm disabled:opacity-60"
                   rows={2}
@@ -948,56 +985,58 @@ const OrderForm = ({ initialOrder, orders = [], onSave, onCancel, userRole, onPr
           </div>
         </div>
 
-        <div className="bg-slate-50 p-6 rounded-2xl space-y-4">
-          <div className="flex justify-between items-center">
-            <span className="text-slate-600 font-medium">Tạm tính:</span>
-            <span className="text-lg font-semibold text-slate-900">{formatCurrency(subTotal)}</span>
-          </div>
-          <div className="flex justify-between items-center">
-            <div className="flex items-center gap-2">
-              <span className="text-slate-600 font-medium">Thuế VAT (%):</span>
-              <input 
-                type="number" 
-                disabled={isStaffEdit}
-                className="w-20 px-2 py-1 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 text-sm font-bold disabled:opacity-60"
-                value={formData.vatRate}
-                onChange={(e) => setFormData({ ...formData, vatRate: Number(e.target.value) })}
-              />
+        {!isProduction && (
+          <div className="bg-slate-50 p-6 rounded-2xl space-y-4">
+            <div className="flex justify-between items-center">
+              <span className="text-slate-600 font-medium">Tạm tính:</span>
+              <span className="text-lg font-semibold text-slate-900">{formatCurrency(subTotal)}</span>
             </div>
-            <span className="text-lg font-semibold text-slate-900">{formatCurrency(vatAmount)}</span>
-          </div>
-          <div className="flex justify-between items-center pt-2 border-t border-slate-200">
-            <span className="text-slate-600 font-bold">Tổng cộng:</span>
-            <span className="text-xl font-bold text-slate-900">{formatCurrency(totalAmount)}</span>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
-            <div className="space-y-2">
-              <label className="text-sm font-bold text-slate-700">Đã thanh toán</label>
-              <input 
-                type="number" 
-                className="w-full px-4 py-3 bg-white border-none rounded-xl focus:ring-2 focus:ring-indigo-500"
-                value={formData.paidAmount}
-                onChange={(e) => setFormData({ ...formData, paidAmount: Number(e.target.value) })}
-              />
+            <div className="flex justify-between items-center">
+              <div className="flex items-center gap-2">
+                <span className="text-slate-600 font-medium">Thuế VAT (%):</span>
+                <input 
+                  type="number" 
+                  disabled={isStaffEdit}
+                  className="w-20 px-2 py-1 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 text-sm font-bold disabled:opacity-60"
+                  value={formData.vatRate}
+                  onChange={(e) => setFormData({ ...formData, vatRate: Number(e.target.value) })}
+                />
+              </div>
+              <span className="text-lg font-semibold text-slate-900">{formatCurrency(vatAmount)}</span>
             </div>
-            <div className="space-y-2">
-              <label className="text-sm font-bold text-slate-700">Trạng thái thanh toán</label>
-              <select 
-                className="w-full px-4 py-3 bg-white border-none rounded-xl focus:ring-2 focus:ring-indigo-500"
-                value={formData.paymentStatus}
-                onChange={(e) => setFormData({ ...formData, paymentStatus: e.target.value as any })}
-              >
-                <option value="unpaid">Chưa trả</option>
-                <option value="partial">Trả một phần</option>
-                <option value="paid">Đã trả</option>
-              </select>
+            <div className="flex justify-between items-center pt-2 border-t border-slate-200">
+              <span className="text-slate-600 font-bold">Tổng cộng:</span>
+              <span className="text-xl font-bold text-slate-900">{formatCurrency(totalAmount)}</span>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-slate-700">Đã thanh toán</label>
+                <input 
+                  type="number" 
+                  className="w-full px-4 py-3 bg-white border-none rounded-xl focus:ring-2 focus:ring-indigo-500"
+                  value={formData.paidAmount}
+                  onChange={(e) => setFormData({ ...formData, paidAmount: Number(e.target.value) })}
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-slate-700">Trạng thái thanh toán</label>
+                <select 
+                  className="w-full px-4 py-3 bg-white border-none rounded-xl focus:ring-2 focus:ring-indigo-500"
+                  value={formData.paymentStatus}
+                  onChange={(e) => setFormData({ ...formData, paymentStatus: e.target.value as any })}
+                >
+                  <option value="unpaid">Chưa trả</option>
+                  <option value="partial">Trả một phần</option>
+                  <option value="paid">Đã trả</option>
+                </select>
+              </div>
+            </div>
+            <div className="flex justify-between items-center pt-4 border-t border-slate-200">
+              <span className="text-rose-600 font-bold">Còn nợ:</span>
+              <span className="text-xl font-bold text-rose-600">{formatCurrency(debtAmount)}</span>
             </div>
           </div>
-          <div className="flex justify-between items-center pt-4 border-t border-slate-200">
-            <span className="text-rose-600 font-bold">Còn nợ:</span>
-            <span className="text-xl font-bold text-rose-600">{formatCurrency(debtAmount)}</span>
-          </div>
-        </div>
+        )}
 
         <div className="flex gap-4 pt-4">
           <button 
@@ -1615,7 +1654,7 @@ const PriceCalculator = ({
 }: { 
   isFloating?: boolean, 
   onClose?: () => void,
-  userRole?: 'admin' | 'staff',
+  userRole?: 'admin' | 'staff' | 'production',
   paperTypes: PaperType[],
   postProcessing: PostProcessingType[],
   printConfig: PrintConfig,
@@ -2365,7 +2404,7 @@ const PriceCalculator = ({
 
 const UserManagement = ({ users, onUpdateRole, onApprove, onDelete }: { 
   users: UserProfile[], 
-  onUpdateRole: (uid: string, role: 'admin' | 'staff') => void, 
+  onUpdateRole: (uid: string, role: UserRole) => void, 
   onApprove: (uid: string) => void,
   onDelete: (uid: string) => void
 }) => {
@@ -2472,16 +2511,19 @@ const UserManagement = ({ users, onUpdateRole, onApprove, onDelete }: {
               <div className="flex items-center justify-between pt-4 border-t border-slate-50">
                 <span className={cn(
                   "text-[10px] font-bold px-2 py-0.5 rounded-full uppercase",
-                  user.role === 'admin' ? "bg-indigo-100 text-indigo-600" : "bg-slate-100 text-slate-600"
+                  user.role === 'admin' ? "bg-indigo-100 text-indigo-600" : 
+                  user.role === 'production' ? "bg-amber-100 text-amber-600" :
+                  "bg-slate-100 text-slate-600"
                 )}>
-                  {user.role}
+                  {user.role === 'admin' ? 'Quản trị' : user.role === 'production' ? 'Sản xuất' : 'Bán hàng'}
                 </span>
                 <select 
                   className="text-xs border-none bg-slate-50 rounded-lg px-2 py-1 focus:ring-2 focus:ring-indigo-500"
                   value={user.role}
                   onChange={(e) => onUpdateRole(user.uid, e.target.value as any)}
                 >
-                  <option value="staff">Nhân viên</option>
+                  <option value="staff">NV Bán hàng</option>
+                  <option value="production">NV Sản xuất</option>
                   <option value="admin">Quản trị viên</option>
                 </select>
                 <button 
@@ -2826,7 +2868,7 @@ export default function App() {
     }
   };
 
-  const handleUpdateUserRole = async (uid: string, role: 'admin' | 'staff') => {
+  const handleUpdateUserRole = async (uid: string, role: UserRole) => {
     const path = 'users';
     try {
       await updateDoc(doc(db, path, uid), { role });
@@ -2953,10 +2995,16 @@ export default function App() {
                   <SidebarItem to="/" icon={LayoutDashboard} label="Tổng quan" active={location.pathname === '/'} />
                 )}
                 <SidebarItem to="/orders" icon={FileText} label="Đơn hàng" active={location.pathname === '/orders'} />
-                <SidebarItem to="/orders/new" icon={Plus} label="Tạo đơn hàng" active={location.pathname === '/orders/new'} />
-                <SidebarItem icon={Calculator} label="Tính giá in" onClick={() => setCalculatorOpen(!isCalculatorOpen)} />
-                <SidebarItem to="/debt" icon={CreditCard} label="Công nợ" active={location.pathname === '/debt'} />
-                <SidebarItem to="/suppliers" icon={Truck} label="Nhà cung cấp" active={location.pathname.startsWith('/suppliers')} />
+                
+                {profile?.role !== 'production' && (
+                  <>
+                    <SidebarItem to="/orders/new" icon={Plus} label="Tạo đơn hàng" active={location.pathname === '/orders/new'} />
+                    <SidebarItem icon={Calculator} label="Tính giá in" onClick={() => setCalculatorOpen(!isCalculatorOpen)} />
+                    <SidebarItem to="/debt" icon={CreditCard} label="Công nợ" active={location.pathname === '/debt'} />
+                    <SidebarItem to="/suppliers" icon={Truck} label="Nhà cung cấp" active={location.pathname.startsWith('/suppliers')} />
+                  </>
+                )}
+
                 {profile?.role === 'admin' && (
                   <>
                     <SidebarItem to="/logs" icon={History} label="Lịch sử" active={location.pathname === '/logs'} />
@@ -2972,7 +3020,9 @@ export default function App() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-bold text-slate-900 truncate">{profile?.displayName || user.email}</p>
-                    <p className="text-[10px] font-bold text-indigo-600 uppercase tracking-wider">{profile?.role}</p>
+                    <p className="text-[10px] font-bold text-indigo-600 uppercase tracking-wider">
+                      {profile?.role === 'admin' ? 'Quản trị' : profile?.role === 'production' ? 'Sản xuất' : 'Bán hàng'}
+                    </p>
                   </div>
                 </div>
                 <button 
@@ -2999,7 +3049,8 @@ export default function App() {
             <div className="p-8 max-w-[1600px] mx-auto h-[calc(100vh-4rem)] lg:h-screen overflow-y-auto scrollbar-hide">
               <Routes>
                 <Route path="/" element={
-                  profile?.role === 'admin' ? <Dashboard orders={orders} supplierOrders={supplierOrders} userRole={profile?.role} users={users} /> : <Navigate to="/orders/new" />
+                  profile?.role === 'admin' ? <Dashboard orders={orders} supplierOrders={supplierOrders} userRole={profile?.role} users={users} /> : 
+                  profile?.role === 'production' ? <Navigate to="/orders" /> : <Navigate to="/orders/new" />
                 } />
                 <Route path="/orders" element={
                   <OrderList 
@@ -3012,6 +3063,7 @@ export default function App() {
                   />
                 } />
                 <Route path="/orders/new" element={
+                  profile?.role === 'production' ? <Navigate to="/orders" /> :
                   <OrderForm orders={orders} onSave={handleSaveOrder} onCancel={() => navigate(-1)} userRole={profile?.role} onPrint={(order, type) => setPrintOrder({ order, type })} />
                 } />
                 <Route path="/orders/edit" element={
@@ -3020,6 +3072,7 @@ export default function App() {
                   ) : <Navigate to="/orders" />
                 } />
                 <Route path="/suppliers" element={
+                  profile?.role === 'production' ? <Navigate to="/orders" /> :
                   <SupplierOrderList 
                     orders={supplierOrders} 
                     onEdit={(o) => { setEditingSupplierOrder(o); navigate('/suppliers/edit'); }} 
@@ -3029,14 +3082,16 @@ export default function App() {
                   />
                 } />
                 <Route path="/suppliers/new" element={
+                  profile?.role === 'production' ? <Navigate to="/orders" /> :
                   <SupplierOrderForm supplierOrders={supplierOrders} onSave={handleSaveSupplierOrder} onCancel={() => navigate(-1)} userRole={profile?.role} />
                 } />
                 <Route path="/suppliers/edit" element={
-                  editingSupplierOrder ? (
+                  editingSupplierOrder && profile?.role !== 'production' ? (
                     <SupplierOrderForm supplierOrders={supplierOrders} initialOrder={editingSupplierOrder} onSave={handleSaveSupplierOrder} onCancel={() => { setEditingSupplierOrder(null); navigate(-1); }} userRole={profile?.role} />
                   ) : <Navigate to="/suppliers" />
                 } />
                 <Route path="/debt" element={
+                  profile?.role === 'production' ? <Navigate to="/orders" /> :
                   <OrderList 
                     title="Quản lý công nợ"
                     orders={orders.filter(o => o.paymentStatus !== 'paid')} 

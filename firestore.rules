@@ -11,7 +11,7 @@ service cloud.firestore {
     //   - uid: string (required)
     //   - email: string (required, email format)
     //   - displayName: string
-    //   - role: string (required, enum: ['admin', 'staff'])
+    //   - role: string (required, enum: ['admin', 'staff', 'production'])
     //   - isApproved: bool (required)
     //   - createdAt: timestamp
     //
@@ -105,7 +105,7 @@ service cloud.firestore {
       return hasRequiredFields(['uid', 'email', 'role', 'isApproved']) &&
              data.uid is string &&
              isValidEmail(data.email) &&
-             data.role in ['admin', 'staff'] &&
+             data.role in ['admin', 'staff', 'production'] &&
              data.isApproved is bool;
     }
 
