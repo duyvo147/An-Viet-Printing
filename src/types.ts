@@ -39,6 +39,7 @@ export interface Order {
   vatInvoiceCode: string;
   status: OrderStatus;
   paymentStatus: PaymentStatus;
+  paidAt?: Timestamp | null;
   createdBy: string;
   createdAt: Timestamp;
   updatedAt: Timestamp;
@@ -73,6 +74,7 @@ export interface SupplierOrder {
   debtAmount: number;
   status: SupplierOrderStatus;
   paymentStatus: PaymentStatus;
+  paidAt?: Timestamp | null;
   createdBy: string;
   createdAt: Timestamp;
   updatedAt: Timestamp;

@@ -117,41 +117,48 @@ const Dashboard = ({ orders, supplierOrders, userRole, users = [] }: { orders: O
     end: format(new Date(), 'yyyy-MM-dd')
   });
 
-  const filteredData = useMemo(() => {
+  const stats = useMemo(() => {
     const start = startOfDay(parseISO(dateRange.start));
     const end = endOfDay(parseISO(dateRange.end));
 
-    const fOrders = orders.filter(o => {
+    // Orders created in the period
+    const periodOrders = orders.filter(o => {
       const date = o.createdAt.toDate();
       return isWithinInterval(date, { start, end });
     });
 
-    const fSupplierOrders = supplierOrders.filter(o => {
+    // Supplier orders created in the period
+    const periodSupplierOrders = supplierOrders.filter(o => {
       const date = o.createdAt.toDate();
       return isWithinInterval(date, { start, end });
     });
 
-    return { orders: fOrders, supplierOrders: fSupplierOrders };
-  }, [orders, supplierOrders, dateRange]);
+    // Revenue is based on paidAt date
+    const revenueOrders = orders.filter(o => {
+      if (o.paymentStatus !== 'paid' || !o.paidAt) return false;
+      const paidDate = o.paidAt.toDate();
+      return isWithinInterval(paidDate, { start, end });
+    });
+    const totalRevenue = revenueOrders.reduce((sum, o) => sum + o.totalAmount, 0);
 
-  const stats = useMemo(() => {
-    const { orders: fOrders, supplierOrders: fSupplierOrders } = filteredData;
+    // Expenses are based on paidAt date (or createdAt if paidAt is missing but it's paid)
+    const expenseOrders = supplierOrders.filter(o => {
+      if (o.paymentStatus !== 'paid') return false;
+      const date = (o.paidAt || o.createdAt).toDate();
+      return isWithinInterval(date, { start, end });
+    });
+    const totalExpenses = expenseOrders.reduce((sum, o) => sum + o.totalAmount, 0);
 
-    const totalRevenue = fOrders.filter(o => o.paymentStatus === 'paid').reduce((sum, o) => sum + o.totalAmount, 0);
-    const totalPaid = fOrders.reduce((sum, o) => sum + o.paidAmount, 0);
-    const totalDebt = fOrders.reduce((sum, o) => sum + o.debtAmount, 0);
-    
-    const totalExpenses = fSupplierOrders.reduce((sum, o) => sum + o.totalAmount, 0);
-    const totalExpensePaid = fSupplierOrders.reduce((sum, o) => sum + o.paidAmount, 0);
-    const totalExpenseDebt = fSupplierOrders.reduce((sum, o) => sum + o.debtAmount, 0);
+    // Other stats based on orders created in the period
+    const totalPaid = periodOrders.reduce((sum, o) => sum + o.paidAmount, 0);
+    const totalDebt = periodOrders.reduce((sum, o) => sum + o.debtAmount, 0);
+    const totalExpensePaid = periodSupplierOrders.reduce((sum, o) => sum + o.paidAmount, 0);
+    const totalExpenseDebt = periodSupplierOrders.reduce((sum, o) => sum + o.debtAmount, 0);
 
-    const pendingOrders = fOrders.filter(o => o.status === 'pending').length;
+    // Pending orders based on createdAt
+    const pendingOrders = periodOrders.filter(o => o.status === 'pending').length;
 
     // Chart data based on filtered range
-    // If range > 14 days, group by week or just show daily for the range?
-    // Let's stick to daily for now but limit to the selected range.
-    const start = startOfDay(parseISO(dateRange.start));
-    const end = endOfDay(parseISO(dateRange.end));
     const diffDays = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
     
     // Limit chart to max 31 points for performance/readability
@@ -161,27 +168,36 @@ const Dashboard = ({ orders, supplierOrders, userRole, users = [] }: { orders: O
     for (let i = 0; i <= diffDays; i += step) {
       const date = subDays(end, diffDays - i);
       const dateStr = format(date, 'dd/MM');
+      const dayStart = startOfDay(date);
+      const dayEnd = endOfDay(date);
       
-      const dayOrders = fOrders.filter(o => {
-        const orderDate = o.createdAt.toDate();
-        return isWithinInterval(orderDate, { start: startOfDay(date), end: endOfDay(date) });
-      });
+      const dayRevenue = orders.filter(o => {
+        if (o.paymentStatus !== 'paid' || !o.paidAt) return false;
+        const paidDate = o.paidAt.toDate();
+        return isWithinInterval(paidDate, { start: dayStart, end: dayEnd });
+      }).reduce((sum, o) => sum + o.totalAmount, 0);
 
-      const dayExpenses = fSupplierOrders.filter(o => {
+      const dayExpenses = supplierOrders.filter(o => {
+        if (o.paymentStatus !== 'paid') return false;
+        const date = (o.paidAt || o.createdAt).toDate();
+        return isWithinInterval(date, { start: dayStart, end: dayEnd });
+      }).reduce((sum, o) => sum + o.totalAmount, 0);
+
+      const dayCount = orders.filter(o => {
         const orderDate = o.createdAt.toDate();
-        return isWithinInterval(orderDate, { start: startOfDay(date), end: endOfDay(date) });
-      });
+        return isWithinInterval(orderDate, { start: dayStart, end: dayEnd });
+      }).length;
 
       chartData.push({
         name: dateStr,
-        revenue: dayOrders.filter(o => o.paymentStatus === 'paid').reduce((sum, o) => sum + o.totalAmount, 0),
-        expenses: dayExpenses.reduce((sum, o) => sum + o.totalAmount, 0),
-        count: dayOrders.length
+        revenue: dayRevenue,
+        expenses: dayExpenses,
+        count: dayCount
       });
     }
 
     return { totalRevenue, totalPaid, totalDebt, totalExpenses, totalExpensePaid, totalExpenseDebt, pendingOrders, chartData };
-  }, [filteredData, dateRange]);
+  }, [orders, supplierOrders, dateRange]);
 
   const getCreatorName = (uid: string) => {
     const creator = users.find(u => u.uid === uid);
@@ -232,27 +248,18 @@ const Dashboard = ({ orders, supplierOrders, userRole, users = [] }: { orders: O
           <h2 className="text-lg font-bold text-slate-900 mb-6">Biểu đồ thu chi</h2>
           <div className="h-[300px] w-full">
             <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
-              <AreaChart data={stats.chartData}>
-                <defs>
-                  <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#6366f1" stopOpacity={0.1}/>
-                    <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
-                  </linearGradient>
-                  <linearGradient id="colorExpenses" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.1}/>
-                    <stop offset="95%" stopColor="#f43f5e" stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
+              <BarChart data={stats.chartData}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 12}} dy={10} />
                 <YAxis axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 12}} tickFormatter={(v) => `${v/1000000}M`} />
                 <Tooltip 
+                  cursor={{fill: '#f8fafc'}}
                   contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
                   formatter={(v: number, name: string) => [formatCurrency(v), name === 'revenue' ? 'Doanh thu' : 'Chi phí']}
                 />
-                <Area type="monotone" dataKey="revenue" stroke="#6366f1" strokeWidth={3} fillOpacity={1} fill="url(#colorRevenue)" name="revenue" />
-                <Area type="monotone" dataKey="expenses" stroke="#f43f5e" strokeWidth={3} fillOpacity={1} fill="url(#colorExpenses)" name="expenses" />
-              </AreaChart>
+                <Bar dataKey="revenue" fill="#6366f1" radius={[4, 4, 0, 0]} name="revenue" />
+                <Bar dataKey="expenses" fill="#f43f5e" radius={[4, 4, 0, 0]} name="expenses" />
+              </BarChart>
             </ResponsiveContainer>
           </div>
         </div>
@@ -2707,7 +2714,21 @@ export default function App() {
         }
         if (editingOrder.paymentStatus !== data.paymentStatus) {
           changes.push(`thanh toán: ${editingOrder.paymentStatus} -> ${data.paymentStatus}`);
+          
+          // Update paidAt based on paymentStatus transition
+          if (data.paymentStatus === 'paid') {
+            data.paidAt = serverTimestamp();
+          } else {
+            data.paidAt = null;
+          }
+        } else if (data.paymentStatus === 'paid' && !editingOrder.paidAt) {
+          // Ensure paidAt is set if it was paid but paidAt was missing
+          data.paidAt = serverTimestamp();
+        } else {
+          // Keep existing paidAt
+          data.paidAt = editingOrder.paidAt || null;
         }
+
         if (editingOrder.paidAmount !== data.paidAmount) {
           changes.push(`số tiền trả: ${formatCurrency(editingOrder.paidAmount)} -> ${formatCurrency(data.paidAmount)}`);
         }
@@ -2732,12 +2753,15 @@ export default function App() {
         const sequence = String(orders.length + 1).padStart(4, '0');
         const orderCode = `AVP-${month}${year}${sequence}`;
 
-        const docRef = await addDoc(collection(db, path), {
+        const finalData = {
           ...data,
           orderCode,
           createdBy: user?.uid,
-          createdAt: serverTimestamp()
-        });
+          createdAt: serverTimestamp(),
+          paidAt: data.paymentStatus === 'paid' ? serverTimestamp() : null
+        };
+
+        const docRef = await addDoc(collection(db, path), finalData);
         await logActivity('tạo đơn hàng mới', `Đơn hàng mới ${orderCode} cho ${data.customerName}`);
       }
       setEditingOrder(null);
@@ -2764,13 +2788,23 @@ export default function App() {
     const path = 'supplier_orders';
     try {
       if (editingSupplierOrder) {
+        // Update paidAt based on paymentStatus transition
+        if (data.paymentStatus === 'paid' && editingSupplierOrder.paymentStatus !== 'paid') {
+          data.paidAt = serverTimestamp();
+        } else if (data.paymentStatus !== 'paid') {
+          data.paidAt = null;
+        } else {
+          data.paidAt = editingSupplierOrder.paidAt || null;
+        }
+
         await updateDoc(doc(db, path, editingSupplierOrder.id), data);
         await logActivity('cập nhật đơn mua', `Cập nhật đơn mua từ ${data.supplierName}`);
       } else {
         await addDoc(collection(db, path), {
           ...data,
           createdBy: user?.uid,
-          createdAt: serverTimestamp()
+          createdAt: serverTimestamp(),
+          paidAt: data.paymentStatus === 'paid' ? serverTimestamp() : null
         });
         await logActivity('tạo đơn mua mới', `Tạo đơn mua mới từ ${data.supplierName}`);
       }
