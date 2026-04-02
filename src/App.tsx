@@ -439,6 +439,7 @@ const PrintModal = ({ order, type, onClose }: { order: Order, type: 'quote' | 'd
 const OrderList = ({ orders, onEdit, onDelete, title = 'Quản lý đơn hàng', userRole, users = [], onPrint }: { orders: Order[], onEdit: (o: Order) => void, onDelete?: (id: string) => void, title?: string, userRole?: string, users?: UserProfile[], onPrint: (order: Order, type: 'quote' | 'delivery') => void }) => {
   const [filter, setFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState<OrderStatus | 'all'>('all');
+  const [paymentFilter, setPaymentFilter] = useState<PaymentStatus | 'all'>('all');
   const [creatorFilter, setCreatorFilter] = useState<string | 'all'>('all');
   const [dateRange, setDateRange] = useState({
     start: '',
@@ -456,6 +457,7 @@ const OrderList = ({ orders, onEdit, onDelete, title = 'Quản lý đơn hàng',
                          orderCode.toLowerCase().includes(filter.toLowerCase()) ||
                          o.vatInvoiceCode.toLowerCase().includes(filter.toLowerCase());
     const matchesStatus = statusFilter === 'all' || o.status === statusFilter;
+    const matchesPayment = paymentFilter === 'all' || o.paymentStatus === paymentFilter;
     const matchesCreator = creatorFilter === 'all' || o.createdBy === creatorFilter;
     
     let matchesDate = true;
@@ -473,7 +475,7 @@ const OrderList = ({ orders, onEdit, onDelete, title = 'Quản lý đơn hàng',
       }
     }
 
-    return matchesSearch && matchesStatus && matchesCreator && matchesDate;
+    return matchesSearch && matchesStatus && matchesPayment && matchesCreator && matchesDate;
   });
 
   const totalDebt = useMemo(() => {
@@ -517,6 +519,16 @@ const OrderList = ({ orders, onEdit, onDelete, title = 'Quản lý đơn hàng',
           </select>
           <select 
             className="px-4 py-2 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 transition-all text-slate-600"
+            value={paymentFilter}
+            onChange={(e) => setPaymentFilter(e.target.value as any)}
+          >
+            <option value="all">Tất cả thanh toán</option>
+            <option value="unpaid">Chưa trả</option>
+            <option value="partial">Trả một phần</option>
+            <option value="paid">Đã trả</option>
+          </select>
+          <select 
+            className="px-4 py-2 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 transition-all text-slate-600"
             value={creatorFilter}
             onChange={(e) => setCreatorFilter(e.target.value)}
           >
@@ -554,7 +566,7 @@ const OrderList = ({ orders, onEdit, onDelete, title = 'Quản lý đơn hàng',
               </button>
             )}
           </div>
-          {title === 'Quản lý công nợ' && (
+          {(title === 'Quản lý đơn hàng' || title === 'Quản lý công nợ') && (
             <div className="ml-auto flex items-center gap-2 bg-rose-50 px-3 py-1.5 rounded-lg border border-rose-100">
               <span className="text-xs font-bold text-rose-400 uppercase tracking-wider">Tổng công nợ chưa thu:</span>
               <span className="text-sm font-bold text-rose-600">{formatCurrency(totalDebt)}</span>
@@ -2988,7 +3000,6 @@ export default function App() {
                   <>
                     <SidebarItem to="/orders/new" icon={Plus} label="Tạo đơn hàng" active={location.pathname === '/orders/new'} />
                     <SidebarItem icon={Calculator} label="Tính giá in" onClick={() => setCalculatorOpen(!isCalculatorOpen)} />
-                    <SidebarItem to="/debt" icon={CreditCard} label="Công nợ" active={location.pathname === '/debt'} />
                     <SidebarItem to="/suppliers" icon={Truck} label="Nhà cung cấp" active={location.pathname.startsWith('/suppliers')} />
                   </>
                 )}
@@ -3077,18 +3088,6 @@ export default function App() {
                   editingSupplierOrder && profile?.role !== 'production' ? (
                     <SupplierOrderForm supplierOrders={supplierOrders} initialOrder={editingSupplierOrder} onSave={handleSaveSupplierOrder} onCancel={() => { setEditingSupplierOrder(null); navigate(-1); }} userRole={profile?.role} />
                   ) : <Navigate to="/suppliers" />
-                } />
-                <Route path="/debt" element={
-                  profile?.role === 'production' ? <Navigate to="/orders" /> :
-                  <OrderList 
-                    title="Quản lý công nợ"
-                    orders={orders.filter(o => o.paymentStatus !== 'paid')} 
-                    onEdit={(o) => { setEditingOrder(o); navigate('/orders/edit'); }} 
-                    onDelete={handleDeleteOrder}
-                    userRole={profile?.role}
-                    users={users}
-                    onPrint={(order, type) => setPrintOrder({ order, type })}
-                  />
                 } />
                 <Route path="/logs" element={
                   profile?.role === 'admin' ? <ActivityLogs logs={logs} /> : <Navigate to="/orders/new" />
