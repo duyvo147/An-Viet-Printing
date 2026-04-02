@@ -397,15 +397,7 @@ const PrintModal = ({ order, type, onClose }: { order: Order, type: 'quote' | 'd
             </table>
 
             {type === 'quote' && (
-              <div className="flex justify-between items-end mb-12">
-                <div className="bg-slate-50 p-6 rounded-2xl border-2 border-slate-200 min-w-[350px]">
-                  <h3 className="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-3">Thông tin chuyển khoản</h3>
-                  <div className="text-sm text-slate-900 space-y-2 font-bold">
-                    <p><span className="font-black text-slate-900">Số TK:</span> 90317874102</p>
-                    <p><span className="font-black text-slate-900">Ngân hàng:</span> TMCP Tiên Phong (TPbank)</p>
-                    <p><span className="font-black text-slate-900">Chủ tài khoản:</span> Công ty TNHH TM-DV-SX An Việt Solution</p>
-                  </div>
-                </div>
+              <div className="flex justify-end items-end mb-12">
                 <div className="w-64 space-y-3">
                   <div className="flex justify-between text-slate-900 font-bold">
                     <span>Tạm tính:</span>
