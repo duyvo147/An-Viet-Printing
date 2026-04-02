@@ -895,15 +895,6 @@ const OrderForm = ({ initialOrder, orders = [], onSave, onCancel, userRole, onPr
         <div className="space-y-4">
           <div className="flex justify-between items-center">
             <h3 className="text-lg font-bold text-slate-900">Danh mục in ấn</h3>
-            {!isProduction && (
-              <button 
-                type="button" 
-                onClick={handleAddItem}
-                className="text-indigo-600 hover:text-indigo-700 text-sm font-bold flex items-center gap-1"
-              >
-                <Plus className="w-4 h-4" /> Thêm hạng mục
-              </button>
-            )}
           </div>
           <div className="hidden md:grid grid-cols-[40px_1fr_80px_80px_120px_120px_40px] gap-3 px-4 mb-2">
             <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">STT</span>
@@ -991,6 +982,18 @@ const OrderForm = ({ initialOrder, orders = [], onSave, onCancel, userRole, onPr
               </div>
             ))}
           </div>
+          {!isProduction && (
+            <button 
+              type="button" 
+              onClick={handleAddItem}
+              className="w-full py-3 border-2 border-dashed border-slate-200 rounded-2xl text-slate-500 hover:text-indigo-600 hover:border-indigo-200 hover:bg-indigo-50 transition-all font-bold flex items-center justify-center gap-2 group"
+            >
+              <div className="p-1 bg-slate-100 group-hover:bg-indigo-100 rounded-full transition-colors">
+                <Plus className="w-4 h-4" />
+              </div>
+              Thêm hạng mục mới
+            </button>
+          )}
         </div>
 
         {!isProduction && (
@@ -2793,7 +2796,7 @@ export default function App() {
           : `Đơn hàng ${editingOrder.id} (${data.customerName}). Không có thay đổi lớn.`;
 
         // If production role, only update status and updatedAt to comply with security rules
-        if (userRole === 'production') {
+        if (profile?.role === 'production') {
           await updateDoc(doc(db, path, editingOrder.id), {
             status: data.status,
             updatedAt: serverTimestamp()
