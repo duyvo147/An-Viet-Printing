@@ -569,7 +569,7 @@ const OrderList = ({ orders, onEdit, onDelete, title = 'Quản lý đơn hàng',
               </button>
             )}
           </div>
-          {(title === 'Quản lý đơn hàng' || title === 'Quản lý công nợ') && (
+          {userRole !== 'production' && (title === 'Quản lý đơn hàng' || title === 'Quản lý công nợ') && (
             <div className="ml-auto flex items-center gap-2 bg-rose-50 px-3 py-1.5 rounded-lg border border-rose-100">
               <span className="text-xs font-bold text-rose-400 uppercase tracking-wider">Tổng công nợ chưa thu:</span>
               <span className="text-sm font-bold text-rose-600">{formatCurrency(totalDebt)}</span>
