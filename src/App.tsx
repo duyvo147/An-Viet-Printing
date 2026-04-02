@@ -4,7 +4,7 @@
  */
 
 import React, { useEffect, useState, useMemo } from 'react';
-import { Routes, Route, Navigate, Link, useLocation, useNavigate } from 'react-router-dom';
+import { Routes, Route, Navigate, Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence, useDragControls } from 'motion/react';
 import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { collection, onSnapshot, query, orderBy, doc, getDoc, setDoc, addDoc, Timestamp, serverTimestamp, where, limit, updateDoc, deleteDoc } from 'firebase/firestore';
@@ -439,14 +439,35 @@ const PrintModal = ({ order, type, onClose }: { order: Order, type: 'quote' | 'd
 };
 
 const OrderList = ({ orders, onEdit, onDelete, title = 'Quản lý đơn hàng', userRole, users = [], onPrint }: { orders: Order[], onEdit: (o: Order) => void, onDelete?: (id: string) => void, title?: string, userRole?: string, users?: UserProfile[], onPrint: (order: Order, type: 'quote' | 'delivery') => void }) => {
-  const [filter, setFilter] = useState('');
-  const [statusFilter, setStatusFilter] = useState<OrderStatus | 'all'>('all');
-  const [paymentFilter, setPaymentFilter] = useState<PaymentStatus | 'all'>('all');
-  const [creatorFilter, setCreatorFilter] = useState<string | 'all'>('all');
-  const [dateRange, setDateRange] = useState({
-    start: '',
-    end: ''
-  });
+  const [searchParams, setSearchParams] = useSearchParams();
+  
+  const filter = searchParams.get('q') || '';
+  const statusFilter = (searchParams.get('status') as OrderStatus | 'all') || 'all';
+  const paymentFilter = (searchParams.get('payment') as PaymentStatus | 'all') || 'all';
+  const creatorFilter = searchParams.get('creator') || 'all';
+  const dateRange = {
+    start: searchParams.get('start') || '',
+    end: searchParams.get('end') || ''
+  };
+
+  const updateParams = (updates: Record<string, string | null>) => {
+    setSearchParams(prev => {
+      Object.entries(updates).forEach(([key, value]) => {
+        if (value && value !== 'all') {
+          prev.set(key, value);
+        } else {
+          prev.delete(key);
+        }
+      });
+      return prev;
+    }, { replace: true });
+  };
+
+  const setFilter = (val: string) => updateParams({ q: val });
+  const setStatusFilter = (val: string) => updateParams({ status: val });
+  const setPaymentFilter = (val: string) => updateParams({ payment: val });
+  const setCreatorFilter = (val: string) => updateParams({ creator: val });
+  const setDateRange = (range: { start: string, end: string }) => updateParams({ start: range.start, end: range.end });
 
   const getCreatorName = (uid: string) => {
     const creator = users.find(u => u.uid === uid);
@@ -1075,13 +1096,34 @@ const SupplierOrderList = ({ orders, onEdit, onDelete, userRole, users = [] }: {
   userRole?: string,
   users?: UserProfile[] 
 }) => {
-  const [filter, setFilter] = useState('');
-  const [statusFilter, setStatusFilter] = useState<SupplierOrderStatus | 'all'>('all');
-  const [typeFilter, setTypeFilter] = useState<MaterialType | 'all'>('all');
-  const [dateRange, setDateRange] = useState({
-    start: '',
-    end: ''
-  });
+  const [searchParams, setSearchParams] = useSearchParams();
+  
+  const filter = searchParams.get('q') || '';
+  const statusFilter = (searchParams.get('status') as SupplierOrderStatus | 'all') || 'all';
+  const typeFilter = (searchParams.get('type') as MaterialType | 'all') || 'all';
+  const dateRange = {
+    start: searchParams.get('start') || '',
+    end: searchParams.get('end') || ''
+  };
+
+  const updateParams = (updates: Record<string, string | null>) => {
+    setSearchParams(prev => {
+      Object.entries(updates).forEach(([key, value]) => {
+        if (value && value !== 'all') {
+          prev.set(key, value);
+        } else {
+          prev.delete(key);
+        }
+      });
+      return prev;
+    }, { replace: true });
+  };
+
+  const setFilter = (val: string) => updateParams({ q: val });
+  const setStatusFilter = (val: string) => updateParams({ status: val });
+  const setTypeFilter = (val: string) => updateParams({ type: val });
+  const setDateRange = (range: { start: string, end: string }) => updateParams({ start: range.start, end: range.end });
+
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const navigate = useNavigate();
 
