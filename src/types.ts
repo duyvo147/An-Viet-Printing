@@ -11,7 +11,7 @@ export interface UserProfile {
   createdAt: Timestamp;
 }
 
-export type OrderStatus = 'pending' | 'processing' | 'completed' | 'cancelled';
+export type OrderStatus = 'quote' | 'pending' | 'processing' | 'completed' | 'cancelled';
 export type PaymentStatus = 'unpaid' | 'partial' | 'paid';
 
 export interface OrderItem {

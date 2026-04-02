@@ -155,8 +155,9 @@ const Dashboard = ({ orders, supplierOrders, userRole, users = [] }: { orders: O
     const totalExpensePaid = periodSupplierOrders.reduce((sum, o) => sum + o.paidAmount, 0);
     const totalExpenseDebt = periodSupplierOrders.reduce((sum, o) => sum + o.debtAmount, 0);
 
-    // Pending orders based on createdAt
+    // Pending and Quote orders based on createdAt
     const pendingOrders = periodOrders.filter(o => o.status === 'pending').length;
+    const quoteOrders = periodOrders.filter(o => o.status === 'quote').length;
 
     // Chart data based on filtered range
     const diffDays = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
@@ -196,7 +197,7 @@ const Dashboard = ({ orders, supplierOrders, userRole, users = [] }: { orders: O
       });
     }
 
-    return { totalRevenue, totalPaid, totalDebt, totalExpenses, totalExpensePaid, totalExpenseDebt, pendingOrders, chartData };
+    return { totalRevenue, totalPaid, totalDebt, totalExpenses, totalExpensePaid, totalExpenseDebt, pendingOrders, quoteOrders, chartData };
   }, [orders, supplierOrders, dateRange]);
 
   const getCreatorName = (uid: string) => {
@@ -236,11 +237,12 @@ const Dashboard = ({ orders, supplierOrders, userRole, users = [] }: { orders: O
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard title="Doanh thu" value={formatCurrency(stats.totalRevenue)} icon={DollarSign} color="bg-indigo-500" trend="+12.5%" />
-        <StatCard title="Chi phí" value={formatCurrency(stats.totalExpenses)} icon={Truck} color="bg-rose-500" trend="+5.2%" />
-        <StatCard title="Lợi nhuận" value={formatCurrency(stats.totalRevenue - stats.totalExpenses)} icon={TrendingUp} color="bg-emerald-500" trend="+15.8%" />
-        <StatCard title="Đơn hàng mới" value={stats.pendingOrders.toString()} icon={Clock} color="bg-amber-500" />
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+        <StatCard title="Doanh thu" value={formatCurrency(stats.totalRevenue)} icon={DollarSign} color="bg-indigo-500" />
+        <StatCard title="Chi phí" value={formatCurrency(stats.totalExpenses)} icon={Truck} color="bg-rose-500" />
+        <StatCard title="Lợi nhuận" value={formatCurrency(stats.totalRevenue - stats.totalExpenses)} icon={TrendingUp} color="bg-emerald-500" />
+        <StatCard title="Báo giá" value={stats.quoteOrders.toString()} icon={FileText} color="bg-slate-500" />
+        <StatCard title="Chờ xử lý" value={stats.pendingOrders.toString()} icon={Clock} color="bg-amber-500" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -512,6 +514,7 @@ const OrderList = ({ orders, onEdit, onDelete, title = 'Quản lý đơn hàng',
             onChange={(e) => setStatusFilter(e.target.value as any)}
           >
             <option value="all">Tất cả trạng thái</option>
+            <option value="quote">Báo giá</option>
             <option value="pending">Chờ xử lý</option>
             <option value="processing">Đang in</option>
             <option value="completed">Hoàn thành</option>
@@ -614,9 +617,11 @@ const OrderList = ({ orders, onEdit, onDelete, title = 'Quản lý đơn hàng',
                       "text-xs font-bold px-2 py-1 rounded-full",
                       order.status === 'completed' ? "bg-emerald-50 text-emerald-600" :
                       order.status === 'processing' ? "bg-indigo-50 text-indigo-600" :
-                      order.status === 'cancelled' ? "bg-rose-50 text-rose-600" : "bg-amber-50 text-amber-600"
+                      order.status === 'cancelled' ? "bg-rose-50 text-rose-600" : 
+                      order.status === 'quote' ? "bg-slate-100 text-slate-600" : "bg-amber-50 text-amber-600"
                     )}>
-                      {order.status === 'pending' ? 'Chờ xử lý' : 
+                      {order.status === 'quote' ? 'Báo giá' :
+                       order.status === 'pending' ? 'Chờ xử lý' : 
                        order.status === 'processing' ? 'Đang in' : 
                        order.status === 'completed' ? 'Hoàn thành' : 'Đã hủy'}
                     </span>
@@ -705,7 +710,7 @@ const OrderForm = ({ initialOrder, orders = [], onSave, onCancel, userRole, onPr
     customerAddress: initialOrder?.customerAddress || '',
     customerTaxId: initialOrder?.customerTaxId || '',
     vatInvoiceCode: initialOrder?.vatInvoiceCode || '',
-    status: initialOrder?.status || 'pending',
+    status: initialOrder?.status || 'quote',
     paymentStatus: initialOrder?.paymentStatus || 'unpaid',
     paidAmount: initialOrder?.paidAmount || 0,
     vatRate: initialOrder?.vatRate ?? 10,
@@ -873,14 +878,16 @@ const OrderForm = ({ initialOrder, orders = [], onSave, onCancel, userRole, onPr
           <div className="space-y-2">
             <label className="text-sm font-bold text-slate-700">Trạng thái đơn hàng</label>
             <select 
-              className="w-full px-4 py-3 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500"
+              disabled={isProduction && initialOrder?.status === 'quote'}
+              className="w-full px-4 py-3 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 disabled:opacity-60"
               value={formData.status}
               onChange={(e) => setFormData({ ...formData, status: e.target.value as any })}
             >
-              <option value="pending">Chờ xử lý</option>
+              {(!isProduction || initialOrder?.status === 'quote') && <option value="quote">Báo giá</option>}
+              {(!isProduction || initialOrder?.status === 'pending') && <option value="pending">Chờ xử lý</option>}
               <option value="processing">Đang in</option>
               <option value="completed">Hoàn thành</option>
-              <option value="cancelled">Đã hủy</option>
+              {!isProduction && <option value="cancelled">Đã hủy</option>}
             </select>
           </div>
         </div>

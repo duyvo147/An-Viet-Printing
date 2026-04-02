@@ -82,6 +82,11 @@ service cloud.firestore {
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'staff';
     }
 
+    function isProduction() {
+      return isAuthenticated() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'production';
+    }
+
     function isOwner(userId) {
       return isAuthenticated() && request.auth.uid == userId;
     }
@@ -118,7 +123,7 @@ service cloud.firestore {
       return hasRequiredFields(['customerName', 'totalAmount', 'status', 'paymentStatus', 'createdBy']) &&
              data.customerName is string && data.customerName.size() > 0 && data.customerName.size() < 200 &&
              data.totalAmount is number && data.totalAmount >= 0 &&
-             data.status in ['pending', 'processing', 'completed', 'cancelled'] &&
+             data.status in ['quote', 'pending', 'processing', 'completed', 'cancelled'] &&
              data.paymentStatus in ['unpaid', 'partial', 'paid'] &&
              data.createdBy is string;
     }
@@ -169,7 +174,11 @@ service cloud.firestore {
       allow create: if isApprovedUser() && isValidOrder(request.resource.data) && 
                     request.resource.data.createdBy == request.auth.uid;
       allow update: if isApprovedUser() && isValidOrder(request.resource.data) && 
-                    (isAdmin() || isStaff() || isOwner(resource.data.createdBy));
+                    (isAdmin() || isStaff() || isOwner(resource.data.createdBy) || 
+                     (isProduction() && 
+                      resource.data.status != 'quote' && 
+                      request.resource.data.status in ['processing', 'completed'] &&
+                      request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt'])));
       allow delete: if isAdmin();
     }
 
