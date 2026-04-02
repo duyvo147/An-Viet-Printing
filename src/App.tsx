@@ -2619,6 +2619,14 @@ export default function App() {
   const navigate = useNavigate();
   const location = useLocation();
 
+  // Clear editing states when navigating away from edit routes to prevent aggressive redirects that reset filters
+  useEffect(() => {
+    if (!location.pathname.includes('/edit')) {
+      setEditingOrder(null);
+      setEditingSupplierOrder(null);
+    }
+  }, [location.pathname]);
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (u) => {
       setUser(u);
@@ -2867,7 +2875,6 @@ export default function App() {
         const docRef = await addDoc(collection(db, path), finalData);
         await logActivity('tạo đơn hàng mới', `Đơn hàng mới ${orderCode} cho ${data.customerName}`);
       }
-      setEditingOrder(null);
       navigate(-1);
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, path);
@@ -2911,7 +2918,6 @@ export default function App() {
         });
         await logActivity('tạo đơn mua mới', `Tạo đơn mua mới từ ${data.supplierName}`);
       }
-      setEditingSupplierOrder(null);
       navigate(-1);
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, path);
@@ -3127,9 +3133,7 @@ export default function App() {
                   <OrderForm orders={orders} onSave={handleSaveOrder} onCancel={() => navigate(-1)} userRole={profile?.role} onPrint={(order, type) => setPrintOrder({ order, type })} />
                 } />
                 <Route path="/orders/edit" element={
-                  editingOrder ? (
-                    <OrderForm orders={orders} initialOrder={editingOrder} onSave={handleSaveOrder} onCancel={() => { setEditingOrder(null); navigate(-1); }} userRole={profile?.role} onPrint={(order, type) => setPrintOrder({ order, type })} />
-                  ) : <Navigate to="/orders" />
+                  <OrderForm orders={orders} initialOrder={editingOrder || undefined} onSave={handleSaveOrder} onCancel={() => navigate(-1)} userRole={profile?.role} onPrint={(order, type) => setPrintOrder({ order, type })} />
                 } />
                 <Route path="/suppliers" element={
                   profile?.role === 'production' ? <Navigate to="/orders" /> :
@@ -3146,9 +3150,7 @@ export default function App() {
                   <SupplierOrderForm supplierOrders={supplierOrders} onSave={handleSaveSupplierOrder} onCancel={() => navigate(-1)} userRole={profile?.role} />
                 } />
                 <Route path="/suppliers/edit" element={
-                  editingSupplierOrder && profile?.role !== 'production' ? (
-                    <SupplierOrderForm supplierOrders={supplierOrders} initialOrder={editingSupplierOrder} onSave={handleSaveSupplierOrder} onCancel={() => { setEditingSupplierOrder(null); navigate(-1); }} userRole={profile?.role} />
-                  ) : <Navigate to="/suppliers" />
+                  <SupplierOrderForm supplierOrders={supplierOrders} initialOrder={editingSupplierOrder || undefined} onSave={handleSaveSupplierOrder} onCancel={() => navigate(-1)} userRole={profile?.role} />
                 } />
                 <Route path="/logs" element={
                   profile?.role === 'admin' ? <ActivityLogs logs={logs} /> : <Navigate to="/orders/new" />
