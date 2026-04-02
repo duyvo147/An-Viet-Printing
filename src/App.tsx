@@ -2792,7 +2792,16 @@ export default function App() {
           ? `Đơn hàng ${editingOrder.id} (${data.customerName}). Thay đổi: ${changes.join(', ')}`
           : `Đơn hàng ${editingOrder.id} (${data.customerName}). Không có thay đổi lớn.`;
 
-        await updateDoc(doc(db, path, editingOrder.id), data);
+        // If production role, only update status and updatedAt to comply with security rules
+        if (userRole === 'production') {
+          await updateDoc(doc(db, path, editingOrder.id), {
+            status: data.status,
+            updatedAt: serverTimestamp()
+          });
+        } else {
+          await updateDoc(doc(db, path, editingOrder.id), data);
+        }
+        
         await logActivity('cập nhật đơn hàng', details);
       } else {
         // Generate orderCode: AVP-aabbcccc
