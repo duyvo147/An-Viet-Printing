@@ -77,6 +77,11 @@ service cloud.firestore {
         (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isApproved == true || isAdmin());
     }
 
+    function isStaff() {
+      return isAuthenticated() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'staff';
+    }
+
     function isOwner(userId) {
       return isAuthenticated() && request.auth.uid == userId;
     }
@@ -164,7 +169,7 @@ service cloud.firestore {
       allow create: if isApprovedUser() && isValidOrder(request.resource.data) && 
                     request.resource.data.createdBy == request.auth.uid;
       allow update: if isApprovedUser() && isValidOrder(request.resource.data) && 
-                    (isAdmin() || isOwner(resource.data.createdBy));
+                    (isAdmin() || isStaff() || isOwner(resource.data.createdBy));
       allow delete: if isAdmin();
     }
 
@@ -179,7 +184,7 @@ service cloud.firestore {
       allow create: if isApprovedUser() && isValidSupplierOrder(request.resource.data) && 
                     request.resource.data.createdBy == request.auth.uid;
       allow update: if isApprovedUser() && isValidSupplierOrder(request.resource.data) && 
-                    (isAdmin() || isOwner(resource.data.createdBy));
+                    (isAdmin() || isStaff() || isOwner(resource.data.createdBy));
       allow delete: if isAdmin();
     }
 

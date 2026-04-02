@@ -692,7 +692,6 @@ const OrderList = ({ orders, onEdit, onDelete, title = 'Quản lý đơn hàng',
 };
 
 const OrderForm = ({ initialOrder, orders = [], onSave, onCancel, userRole, onPrint }: { initialOrder?: Order, orders?: Order[], onSave: (o: any) => void, onCancel: () => void, userRole?: string, onPrint: (order: Order, type: 'quote' | 'delivery') => void }) => {
-  const isStaffEdit = userRole === 'staff' && !!initialOrder;
   const isProduction = userRole === 'production';
   const isReadOnly = isProduction; // Production can only view details and update status
 
@@ -799,7 +798,7 @@ const OrderForm = ({ initialOrder, orders = [], onSave, onCancel, userRole, onPr
               required
               type="text" 
               list="customer-suggestions"
-              disabled={isStaffEdit || isProduction}
+              disabled={isProduction}
               className="w-full px-4 py-3 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 disabled:opacity-60"
               value={formData.customerName}
               onChange={(e) => {
@@ -828,7 +827,7 @@ const OrderForm = ({ initialOrder, orders = [], onSave, onCancel, userRole, onPr
             <label className="text-sm font-bold text-slate-700">Số điện thoại</label>
             <input 
               type="text" 
-              disabled={isStaffEdit || isProduction}
+              disabled={isProduction}
               className="w-full px-4 py-3 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 disabled:opacity-60"
               value={formData.customerPhone}
               onChange={(e) => setFormData({ ...formData, customerPhone: e.target.value })}
@@ -838,7 +837,7 @@ const OrderForm = ({ initialOrder, orders = [], onSave, onCancel, userRole, onPr
             <label className="text-sm font-bold text-slate-700">Địa chỉ khách hàng</label>
             <input 
               type="text" 
-              disabled={isStaffEdit || isProduction}
+              disabled={isProduction}
               placeholder="VD: 123 Đường ABC, Quận X, TP. HCM"
               className="w-full px-4 py-3 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 disabled:opacity-60"
               value={formData.customerAddress}
@@ -851,7 +850,6 @@ const OrderForm = ({ initialOrder, orders = [], onSave, onCancel, userRole, onPr
                 <label className="text-sm font-bold text-slate-700">Mã số thuế khách hàng</label>
                 <input 
                   type="text" 
-                  disabled={isStaffEdit}
                   className="w-full px-4 py-3 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 font-mono disabled:opacity-60"
                   value={formData.customerTaxId}
                   onChange={(e) => setFormData({ ...formData, customerTaxId: e.target.value })}
@@ -886,7 +884,7 @@ const OrderForm = ({ initialOrder, orders = [], onSave, onCancel, userRole, onPr
         <div className="space-y-4">
           <div className="flex justify-between items-center">
             <h3 className="text-lg font-bold text-slate-900">Danh mục in ấn</h3>
-            {!isStaffEdit && (
+            {!isProduction && (
               <button 
                 type="button" 
                 onClick={handleAddItem}
@@ -923,7 +921,7 @@ const OrderForm = ({ initialOrder, orders = [], onSave, onCancel, userRole, onPr
                   </div>
                   <input 
                     required
-                    disabled={isStaffEdit || isProduction}
+                    disabled={isProduction}
                     placeholder="Tên sản phẩm"
                     className="w-full px-4 py-2 bg-white border-none rounded-xl focus:ring-2 focus:ring-indigo-500 disabled:opacity-60"
                     value={item.name}
@@ -931,7 +929,7 @@ const OrderForm = ({ initialOrder, orders = [], onSave, onCancel, userRole, onPr
                   />
                   <input 
                     required
-                    disabled={isStaffEdit || isProduction}
+                    disabled={isProduction}
                     placeholder="ĐVT"
                     className="w-full px-4 py-2 bg-white border-none rounded-xl focus:ring-2 focus:ring-indigo-500 disabled:opacity-60 text-center"
                     value={item.unit}
@@ -939,7 +937,7 @@ const OrderForm = ({ initialOrder, orders = [], onSave, onCancel, userRole, onPr
                   />
                   <input 
                     required
-                    disabled={isStaffEdit || isProduction}
+                    disabled={isProduction}
                     type="number"
                     placeholder="SL"
                     className="w-full px-4 py-2 bg-white border-none rounded-xl focus:ring-2 focus:ring-indigo-500 disabled:opacity-60 text-center"
@@ -950,7 +948,6 @@ const OrderForm = ({ initialOrder, orders = [], onSave, onCancel, userRole, onPr
                     <>
                       <input 
                         required
-                        disabled={isStaffEdit}
                         type="number"
                         placeholder="Đơn giá"
                         className="w-full px-4 py-2 bg-white border-none rounded-xl focus:ring-2 focus:ring-indigo-500 disabled:opacity-60 text-right"
@@ -962,7 +959,7 @@ const OrderForm = ({ initialOrder, orders = [], onSave, onCancel, userRole, onPr
                       </div>
                     </>
                   )}
-                  {!isStaffEdit && !isProduction && (
+                  {!isProduction && (
                     <button 
                       type="button" 
                       onClick={() => handleRemoveItem(index)}
@@ -973,7 +970,7 @@ const OrderForm = ({ initialOrder, orders = [], onSave, onCancel, userRole, onPr
                   )}
                 </div>
                 <textarea 
-                  disabled={isStaffEdit || isProduction}
+                  disabled={isProduction}
                   placeholder="Thông tin in ấn (VD: Kích thước, chất liệu, gia công...)"
                   className="w-full px-4 py-2 bg-white border-none rounded-xl focus:ring-2 focus:ring-indigo-500 text-sm disabled:opacity-60"
                   rows={2}
@@ -996,7 +993,6 @@ const OrderForm = ({ initialOrder, orders = [], onSave, onCancel, userRole, onPr
                 <span className="text-slate-600 font-medium">Thuế VAT (%):</span>
                 <input 
                   type="number" 
-                  disabled={isStaffEdit}
                   className="w-20 px-2 py-1 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 text-sm font-bold disabled:opacity-60"
                   value={formData.vatRate}
                   onChange={(e) => setFormData({ ...formData, vatRate: Number(e.target.value) })}
