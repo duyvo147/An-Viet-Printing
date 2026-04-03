@@ -2862,6 +2862,18 @@ export default function App() {
           changes.push(`mã VAT: ${editingOrder.vatInvoiceCode || 'trống'} -> ${data.vatInvoiceCode || 'trống'}`);
         }
 
+        // Track production note changes
+        data.items.forEach((item: any, index: number) => {
+          const oldItem = editingOrder.items?.[index];
+          const oldNote = oldItem?.productionNote || '';
+          const newNote = item.productionNote || '';
+          
+          if (oldNote !== newNote) {
+            const itemName = item.name || `Sản phẩm ${index + 1}`;
+            changes.push(`Ghi chú ${itemName}: "${oldNote || 'trống'}" -> "${newNote || 'trống'}"`);
+          }
+        });
+
         const details = changes.length > 0 
           ? `Đơn hàng ${editingOrder.id} (${data.customerName}). Thay đổi: ${changes.join(', ')}`
           : `Đơn hàng ${editingOrder.id} (${data.customerName}). Không có thay đổi lớn.`;
