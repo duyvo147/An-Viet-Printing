@@ -920,14 +920,13 @@ const OrderForm = ({ initialOrder, orders = [], onSave, onCancel, userRole, onPr
           <div className={cn(
             "hidden md:grid gap-3 px-4 mb-2",
             isProduction 
-              ? "grid-cols-[40px_1fr_80px_80px_200px]" 
-              : "grid-cols-[40px_1fr_80px_80px_150px_120px_120px_40px]"
+              ? "grid-cols-[40px_1fr_80px_80px]" 
+              : "grid-cols-[40px_1fr_80px_80px_120px_120px_40px]"
           )}>
             <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">STT</span>
             <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Tên sản phẩm</span>
             <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">ĐVT</span>
             <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">SL</span>
-            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Ghi chú</span>
             {!isProduction && (
               <>
                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Đơn giá</span>
@@ -942,8 +941,8 @@ const OrderForm = ({ initialOrder, orders = [], onSave, onCancel, userRole, onPr
                 <div className={cn(
                   "grid grid-cols-1 gap-3 items-start",
                   isProduction 
-                    ? "md:grid-cols-[40px_1fr_80px_80px_200px]" 
-                    : "md:grid-cols-[40px_1fr_80px_80px_150px_120px_120px_40px]"
+                    ? "md:grid-cols-[40px_1fr_80px_80px]" 
+                    : "md:grid-cols-[40px_1fr_80px_80px_120px_120px_40px]"
                 )}>
                   <div className="hidden md:flex items-center justify-center h-10 font-bold text-slate-400 text-sm">
                     {index + 1}
@@ -973,12 +972,6 @@ const OrderForm = ({ initialOrder, orders = [], onSave, onCancel, userRole, onPr
                     value={item.quantity}
                     onChange={(e) => handleItemChange(index, 'quantity', Number(e.target.value))}
                   />
-                  <input 
-                    placeholder="Ghi chú SX"
-                    className="w-full px-4 py-2 bg-white border-none rounded-xl focus:ring-2 focus:ring-indigo-500 text-sm"
-                    value={item.productionNote || ''}
-                    onChange={(e) => handleItemChange(index, 'productionNote', e.target.value)}
-                  />
                   {!isProduction && (
                     <>
                       <input 
@@ -1004,14 +997,30 @@ const OrderForm = ({ initialOrder, orders = [], onSave, onCancel, userRole, onPr
                     </button>
                   )}
                 </div>
-                <textarea 
-                  disabled={isProduction}
-                  placeholder="Thông tin in ấn (VD: Kích thước, chất liệu, gia công...)"
-                  className="w-full px-4 py-2 bg-white border-none rounded-xl focus:ring-2 focus:ring-indigo-500 text-sm disabled:opacity-60"
-                  rows={2}
-                  value={item.printingInfo}
-                  onChange={(e) => handleItemChange(index, 'printingInfo', e.target.value)}
-                />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">Thông tin sản phẩm</label>
+                    <textarea 
+                      disabled={isProduction}
+                      placeholder="Thông tin in ấn (VD: Kích thước, chất liệu, gia công...)"
+                      className="w-full px-4 py-2 bg-white border-none rounded-xl focus:ring-2 focus:ring-indigo-500 text-sm disabled:opacity-60"
+                      rows={2}
+                      value={item.printingInfo}
+                      onChange={(e) => handleItemChange(index, 'printingInfo', e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">Ghi chú sản xuất</label>
+                    <textarea 
+                      disabled={isProduction && !!initialOrder?.items?.[index]?.productionNote}
+                      placeholder="Ghi chú cho bộ phận sản xuất..."
+                      className="w-full px-4 py-2 bg-white border-none rounded-xl focus:ring-2 focus:ring-indigo-500 text-sm disabled:opacity-60"
+                      rows={2}
+                      value={item.productionNote || ''}
+                      onChange={(e) => handleItemChange(index, 'productionNote', e.target.value)}
+                    />
+                  </div>
+                </div>
               </div>
             ))}
           </div>
