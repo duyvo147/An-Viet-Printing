@@ -174,11 +174,14 @@ service cloud.firestore {
       allow create: if isApprovedUser() && isValidOrder(request.resource.data) && 
                     request.resource.data.createdBy == request.auth.uid;
       allow update: if isApprovedUser() && isValidOrder(request.resource.data) && 
-                    (isAdmin() || isStaff() || isOwner(resource.data.createdBy) || 
-                     (isProduction() && 
-                      resource.data.status != 'quote' && 
-                      request.resource.data.status in ['processing', 'completed'] &&
-                      request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt', 'items'])));
+                    (isAdmin() || (
+                      (resource.data.status != 'completed' || resource.data.paymentStatus != 'paid') &&
+                      (isStaff() || isOwner(resource.data.createdBy) || 
+                       (isProduction() && 
+                        resource.data.status != 'quote' && 
+                        request.resource.data.status in ['processing', 'completed'] &&
+                        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt', 'items'])))
+                    ));
       allow delete: if isAdmin();
     }
 

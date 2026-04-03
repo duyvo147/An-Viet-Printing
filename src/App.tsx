@@ -723,7 +723,10 @@ const OrderList = ({ orders, onEdit, onDelete, title = 'Quản lý đơn hàng',
 
 const OrderForm = ({ initialOrder, orders = [], onSave, onCancel, userRole, onPrint }: { initialOrder?: Order, orders?: Order[], onSave: (o: any) => void, onCancel: () => void, userRole?: string, onPrint: (order: Order, type: 'quote' | 'delivery') => void }) => {
   const isProduction = userRole === 'production';
-  const isReadOnly = isProduction; // Production can only view details and update status
+  const isAdmin = userRole === 'admin';
+  const isCompletedAndPaid = initialOrder?.status === 'completed' && initialOrder?.paymentStatus === 'paid';
+  const isLocked = !isAdmin && isCompletedAndPaid;
+  const isReadOnly = isProduction || isLocked; // Production or Locked orders are read-only for most fields
 
   const [formData, setFormData] = useState({
     customerName: initialOrder?.customerName || '',
@@ -828,7 +831,7 @@ const OrderForm = ({ initialOrder, orders = [], onSave, onCancel, userRole, onPr
               required
               type="text" 
               list="customer-suggestions"
-              disabled={isProduction}
+              disabled={isReadOnly}
               className="w-full px-4 py-3 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 disabled:opacity-60"
               value={formData.customerName}
               onChange={(e) => {
@@ -857,7 +860,7 @@ const OrderForm = ({ initialOrder, orders = [], onSave, onCancel, userRole, onPr
             <label className="text-sm font-bold text-slate-700">Số điện thoại</label>
             <input 
               type="text" 
-              disabled={isProduction}
+              disabled={isReadOnly}
               className="w-full px-4 py-3 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 disabled:opacity-60"
               value={formData.customerPhone}
               onChange={(e) => setFormData({ ...formData, customerPhone: e.target.value })}
@@ -867,7 +870,7 @@ const OrderForm = ({ initialOrder, orders = [], onSave, onCancel, userRole, onPr
             <label className="text-sm font-bold text-slate-700">Địa chỉ khách hàng</label>
             <input 
               type="text" 
-              disabled={isProduction}
+              disabled={isReadOnly}
               placeholder="VD: 123 Đường ABC, Quận X, TP. HCM"
               className="w-full px-4 py-3 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 disabled:opacity-60"
               value={formData.customerAddress}
@@ -899,7 +902,7 @@ const OrderForm = ({ initialOrder, orders = [], onSave, onCancel, userRole, onPr
           <div className="space-y-2">
             <label className="text-sm font-bold text-slate-700">Trạng thái đơn hàng</label>
             <select 
-              disabled={isProduction && initialOrder?.status === 'quote'}
+              disabled={isLocked || (isProduction && initialOrder?.status === 'quote')}
               className="w-full px-4 py-3 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 disabled:opacity-60"
               value={formData.status}
               onChange={(e) => setFormData({ ...formData, status: e.target.value as any })}
@@ -949,7 +952,7 @@ const OrderForm = ({ initialOrder, orders = [], onSave, onCancel, userRole, onPr
                   </div>
                   <input 
                     required
-                    disabled={isProduction}
+                    disabled={isReadOnly}
                     placeholder="Tên sản phẩm"
                     className="w-full px-4 py-2 bg-white border-none rounded-xl focus:ring-2 focus:ring-indigo-500 disabled:opacity-60"
                     value={item.name}
@@ -957,7 +960,7 @@ const OrderForm = ({ initialOrder, orders = [], onSave, onCancel, userRole, onPr
                   />
                   <input 
                     required
-                    disabled={isProduction}
+                    disabled={isReadOnly}
                     placeholder="ĐVT"
                     className="w-full px-4 py-2 bg-white border-none rounded-xl focus:ring-2 focus:ring-indigo-500 disabled:opacity-60 text-center"
                     value={item.unit}
@@ -965,7 +968,7 @@ const OrderForm = ({ initialOrder, orders = [], onSave, onCancel, userRole, onPr
                   />
                   <input 
                     required
-                    disabled={isProduction}
+                    disabled={isReadOnly}
                     type="number"
                     placeholder="SL"
                     className="w-full px-4 py-2 bg-white border-none rounded-xl focus:ring-2 focus:ring-indigo-500 disabled:opacity-60 text-center"
@@ -976,6 +979,7 @@ const OrderForm = ({ initialOrder, orders = [], onSave, onCancel, userRole, onPr
                     <>
                       <input 
                         required
+                        disabled={isReadOnly}
                         type="number"
                         placeholder="Đơn giá"
                         className="w-full px-4 py-2 bg-white border-none rounded-xl focus:ring-2 focus:ring-indigo-500 disabled:opacity-60 text-right"
@@ -990,8 +994,9 @@ const OrderForm = ({ initialOrder, orders = [], onSave, onCancel, userRole, onPr
                   {!isProduction && (
                     <button 
                       type="button" 
+                      disabled={isReadOnly}
                       onClick={() => handleRemoveItem(index)}
-                      className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors flex items-center justify-center"
+                      className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors flex items-center justify-center disabled:opacity-30"
                     >
                       <X className="w-5 h-5" />
                     </button>
@@ -1001,7 +1006,7 @@ const OrderForm = ({ initialOrder, orders = [], onSave, onCancel, userRole, onPr
                   <div className="space-y-1">
                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">Thông tin sản phẩm</label>
                     <textarea 
-                      disabled={isProduction}
+                      disabled={isReadOnly}
                       placeholder="Thông tin in ấn (VD: Kích thước, chất liệu, gia công...)"
                       className="w-full px-4 py-2 bg-white border-none rounded-xl focus:ring-2 focus:ring-indigo-500 text-sm disabled:opacity-60"
                       rows={2}
@@ -1012,7 +1017,7 @@ const OrderForm = ({ initialOrder, orders = [], onSave, onCancel, userRole, onPr
                   <div className="space-y-1">
                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">Ghi chú sản xuất</label>
                     <textarea 
-                      disabled={isProduction && !!initialOrder?.items?.[index]?.productionNote}
+                      disabled={isReadOnly || (isProduction && !!initialOrder?.items?.[index]?.productionNote)}
                       placeholder="Ghi chú cho bộ phận sản xuất..."
                       className="w-full px-4 py-2 bg-white border-none rounded-xl focus:ring-2 focus:ring-indigo-500 text-sm disabled:opacity-60"
                       rows={2}
@@ -1027,8 +1032,9 @@ const OrderForm = ({ initialOrder, orders = [], onSave, onCancel, userRole, onPr
           {!isProduction && (
             <button 
               type="button" 
+              disabled={isReadOnly}
               onClick={handleAddItem}
-              className="w-full py-3 border-2 border-dashed border-slate-200 rounded-2xl text-slate-500 hover:text-indigo-600 hover:border-indigo-200 hover:bg-indigo-50 transition-all font-bold flex items-center justify-center gap-2 group"
+              className="w-full py-3 border-2 border-dashed border-slate-200 rounded-2xl text-slate-500 hover:text-indigo-600 hover:border-indigo-200 hover:bg-indigo-50 transition-all font-bold flex items-center justify-center gap-2 group disabled:opacity-30"
             >
               <div className="p-1 bg-slate-100 group-hover:bg-indigo-100 rounded-full transition-colors">
                 <Plus className="w-4 h-4" />
@@ -1049,6 +1055,7 @@ const OrderForm = ({ initialOrder, orders = [], onSave, onCancel, userRole, onPr
                 <span className="text-slate-600 font-medium">Thuế VAT (%):</span>
                 <input 
                   type="number" 
+                  disabled={isReadOnly}
                   className="w-20 px-2 py-1 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 text-sm font-bold disabled:opacity-60"
                   value={formData.vatRate}
                   onChange={(e) => setFormData({ ...formData, vatRate: Number(e.target.value) })}
@@ -1065,7 +1072,8 @@ const OrderForm = ({ initialOrder, orders = [], onSave, onCancel, userRole, onPr
                 <label className="text-sm font-bold text-slate-700">Đã thanh toán</label>
                 <input 
                   type="number" 
-                  className="w-full px-4 py-3 bg-white border-none rounded-xl focus:ring-2 focus:ring-indigo-500"
+                  disabled={isReadOnly}
+                  className="w-full px-4 py-3 bg-white border-none rounded-xl focus:ring-2 focus:ring-indigo-500 disabled:opacity-60"
                   value={formData.paidAmount}
                   onChange={(e) => setFormData({ ...formData, paidAmount: Number(e.target.value) })}
                 />
@@ -1073,7 +1081,8 @@ const OrderForm = ({ initialOrder, orders = [], onSave, onCancel, userRole, onPr
               <div className="space-y-2">
                 <label className="text-sm font-bold text-slate-700">Trạng thái thanh toán</label>
                 <select 
-                  className="w-full px-4 py-3 bg-white border-none rounded-xl focus:ring-2 focus:ring-indigo-500"
+                  disabled={isReadOnly}
+                  className="w-full px-4 py-3 bg-white border-none rounded-xl focus:ring-2 focus:ring-indigo-500 disabled:opacity-60"
                   value={formData.paymentStatus}
                   onChange={(e) => setFormData({ ...formData, paymentStatus: e.target.value as any })}
                 >
@@ -1091,18 +1100,23 @@ const OrderForm = ({ initialOrder, orders = [], onSave, onCancel, userRole, onPr
         )}
 
         <div className="flex gap-4 pt-4">
-          <button 
-            type="submit" 
-            className="flex-1 bg-indigo-600 text-white py-4 rounded-2xl font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100"
-          >
-            {initialOrder ? 'Lưu thay đổi' : 'Tạo đơn hàng'}
-          </button>
+          {!isLocked && (
+            <button 
+              type="submit" 
+              className="flex-1 bg-indigo-600 text-white py-4 rounded-2xl font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100"
+            >
+              {initialOrder ? 'Lưu thay đổi' : 'Tạo đơn hàng'}
+            </button>
+          )}
           <button 
             type="button" 
             onClick={onCancel}
-            className="px-8 py-4 border border-slate-200 text-slate-600 rounded-2xl font-bold hover:bg-slate-50 transition-all"
+            className={cn(
+              "py-4 rounded-2xl font-bold transition-all",
+              isLocked ? "flex-1 bg-slate-100 text-slate-600 hover:bg-slate-200" : "px-8 border border-slate-200 text-slate-600 hover:bg-slate-50"
+            )}
           >
-            Hủy
+            {isLocked ? 'Đóng' : 'Hủy'}
           </button>
         </div>
       </form>
