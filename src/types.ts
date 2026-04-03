@@ -20,6 +20,7 @@ export interface OrderItem {
   quantity: number;
   price: number;
   printingInfo: string;
+  productionNote?: string;
 }
 
 export interface Order {

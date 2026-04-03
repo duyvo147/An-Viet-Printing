@@ -178,7 +178,7 @@ service cloud.firestore {
                      (isProduction() && 
                       resource.data.status != 'quote' && 
                       request.resource.data.status in ['processing', 'completed'] &&
-                      request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt'])));
+                      request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt', 'items'])));
       allow delete: if isAdmin();
     }
 
