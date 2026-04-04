@@ -374,7 +374,7 @@ const PrintModal = ({ order, type, onClose, printConfig }: { order: Order, type:
                   Kính đề nghị Quý khách hàng thanh toán số tiền công nợ: <span className="text-2xl font-black">{formatCurrency(order.debtAmount)}</span> theo thông tin như sau:
                 </p>
                 
-                <div className="mt-8 p-8 bg-slate-50 rounded-3xl border border-slate-200 space-y-3">
+                <div className="mt-8 space-y-3">
                   <p className="text-xs font-black text-slate-500 uppercase tracking-widest mb-4">Thông tin thanh toán:</p>
                   <div className="grid grid-cols-1 gap-2 text-lg">
                     <p><span className="font-medium text-slate-500">Ngân hàng:</span> <span className="font-black">{printConfig?.bankName || 'TMCP Tiên Phong (TP Bank)'}</span></p>
