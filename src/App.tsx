@@ -300,7 +300,7 @@ const Dashboard = ({ orders, supplierOrders, userRole, users = [] }: { orders: O
   );
 };
 
-const PrintModal = ({ order, type, onClose }: { order: Order, type: 'quote' | 'delivery', onClose: () => void }) => {
+const PrintModal = ({ order, type, onClose, printConfig }: { order: Order, type: 'quote' | 'delivery' | 'payment_request', onClose: () => void, printConfig?: PrintConfig }) => {
   const handlePrint = () => {
     window.print();
   };
@@ -310,7 +310,7 @@ const PrintModal = ({ order, type, onClose }: { order: Order, type: 'quote' | 'd
       <div className="bg-white w-full max-w-6xl max-h-[90vh] overflow-y-auto rounded-3xl shadow-2xl flex flex-col print:shadow-none print:max-h-none print:rounded-none print:overflow-visible print-modal-content">
         <div className="p-6 border-b border-slate-100 flex justify-between items-center print:hidden print-modal-header">
           <h2 className="text-xl font-bold text-slate-900">
-            {type === 'quote' ? 'Xem trước Báo giá' : 'Xem trước Phiếu giao hàng'}
+            {type === 'quote' ? 'Xem trước Báo giá' : type === 'delivery' ? 'Xem trước Phiếu giao hàng' : 'Xem trước Phiếu Đề Nghị Thanh Toán'}
           </h2>
           <div className="flex gap-3">
             <button 
@@ -339,85 +339,119 @@ const PrintModal = ({ order, type, onClose }: { order: Order, type: 'quote' | 'd
               </div>
               <div className="text-right flex-shrink-0 ml-6">
                 <h1 className="text-2xl font-black text-orange-500 uppercase mb-2 whitespace-nowrap">
-                  {type === 'quote' ? 'BÁO GIÁ' : 'PHIẾU GIAO HÀNG'}
+                  {type === 'quote' ? 'BÁO GIÁ' : type === 'delivery' ? 'PHIẾU GIAO HÀNG' : 'PHIẾU ĐỀ NGHỊ THANH TOÁN'}
                 </h1>
                 <p className="text-slate-900 font-mono font-bold">{order.orderCode || `AVP-OLD-${order.id.slice(-4).toUpperCase()}`}</p>
                 <p className="text-slate-700 text-sm mt-1 font-bold">Ngày: {format(new Date(), 'dd/MM/yyyy')}</p>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-12 mb-10">
-              <div>
-                <h3 className="text-xs font-black text-slate-600 uppercase tracking-widest mb-3">Khách hàng</h3>
-                <p className="text-lg font-black text-slate-900">{order.customerName}</p>
-                <p className="text-slate-900 font-bold">{order.customerPhone}</p>
-                {order.customerAddress && <p className="text-slate-900 text-sm mt-1 font-bold">{order.customerAddress}</p>}
-                {order.customerTaxId && <p className="text-slate-900 text-sm mt-1 font-bold">MST: {order.customerTaxId}</p>}
-                {type === 'delivery' && order.vatInvoiceCode && <p className="text-slate-900 text-sm mt-1 font-bold">HĐ VAT: {order.vatInvoiceCode}</p>}
-              </div>
-              {/* Removed Order Info for Delivery as per request */}
-            </div>
-
-            <table className="w-full mb-10">
-              <thead>
-                <tr className="border-b-2 border-slate-900">
-                  <th className="py-4 text-center text-sm font-black uppercase w-[5%]">STT</th>
-                  <th className={cn("py-4 text-left text-sm font-black uppercase", type === 'delivery' ? "w-[35%]" : "w-[35%]")}>Hạng mục</th>
-                  <th className={cn("py-4 text-center text-sm font-black uppercase", type === 'delivery' ? "w-[15%]" : "w-[10%]")}>ĐVT</th>
-                  <th className={cn("py-4 text-center text-sm font-black uppercase", type === 'delivery' ? "w-[15%]" : "w-[10%]")}>SL</th>
-                  {type === 'quote' ? (
-                    <>
-                      <th className="py-4 text-right text-sm font-black uppercase w-[20%]">Đơn giá</th>
-                      <th className="py-4 text-right text-sm font-black uppercase w-[20%]">Thành tiền</th>
-                    </>
-                  ) : (
-                    <th className="py-4 text-right text-sm font-black uppercase w-[30%]">Ghi chú</th>
-                  )}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {order.items.map((item, i) => (
-                  <tr key={i}>
-                    <td className="py-4 text-center text-slate-900 font-bold">{i + 1}</td>
-                    <td className="py-4">
-                      <p className="font-black text-slate-900">{item.name}</p>
-                      {type === 'quote' && <p className="text-xs text-slate-700 mt-1 italic font-bold">{item.printingInfo}</p>}
-                    </td>
-                    <td className="py-4 text-center text-slate-900 font-bold">{item.unit || 'Cái'}</td>
-                    <td className="py-4 text-center text-slate-900 font-bold">{item.quantity}</td>
-                    {type === 'quote' ? (
-                      <>
-                        <td className="py-4 text-right text-slate-900 font-bold">{formatCurrency(item.price)}</td>
-                        <td className="py-4 text-right font-black text-slate-900">{formatCurrency(item.quantity * item.price)}</td>
-                      </>
-                    ) : (
-                      <td className="py-4 text-right text-slate-900 italic text-xs font-bold"></td>
-                    )}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-
-            {type === 'quote' && (
-              <div className="flex justify-end items-end mb-12">
-                <div className="w-64 space-y-3">
-                  <div className="flex justify-between text-slate-900 font-bold">
-                    <span>Tạm tính:</span>
-                    <span>{formatCurrency(order.subTotal)}</span>
-                  </div>
-                  <div className="flex justify-between text-slate-900 font-bold">
-                    <span>Thuế VAT ({order.vatRate}%):</span>
-                    <span>{formatCurrency(order.vatAmount)}</span>
-                  </div>
-                  <div className="flex justify-between pt-3 border-t-2 border-slate-900 text-xl font-black text-slate-900">
-                    <span>TỔNG CỘNG:</span>
-                    <span>{formatCurrency(order.totalAmount)}</span>
-                  </div>
+            {type !== 'payment_request' && (
+              <div className="grid grid-cols-2 gap-12 mb-10">
+                <div>
+                  <h3 className="text-xs font-black text-slate-600 uppercase tracking-widest mb-3">Khách hàng</h3>
+                  <p className="text-lg font-black text-slate-900">{order.customerName}</p>
+                  <p className="text-slate-900 font-bold">{order.customerPhone}</p>
+                  {order.customerAddress && <p className="text-slate-900 text-sm mt-1 font-bold">{order.customerAddress}</p>}
+                  {order.customerTaxId && <p className="text-slate-900 text-sm mt-1 font-bold">MST: {order.customerTaxId}</p>}
+                  {type === 'delivery' && order.vatInvoiceCode && <p className="text-slate-900 text-sm mt-1 font-bold">HĐ VAT: {order.vatInvoiceCode}</p>}
                 </div>
+                {/* Removed Order Info for Delivery as per request */}
               </div>
             )}
 
-            {type === 'delivery' && (
+            {type === 'payment_request' ? (
+              <div className="py-10 space-y-6 text-slate-900">
+                <div className="text-lg space-y-1">
+                  <p><span className="font-medium">Kính gửi Quý khách hàng:</span> <span className="font-black">{order.customerName}</span></p>
+                  <p><span className="font-medium">Mã số thuế:</span> <span className="font-bold">{order.customerTaxId || '---'}</span></p>
+                  <p><span className="font-medium">Địa chỉ:</span> <span className="font-bold">{order.customerAddress || '---'}</span></p>
+                </div>
+                <p className="text-lg">
+                  Căn cứ theo đơn đặt hàng <span className="font-black underline">{order.orderCode || `AVP-OLD-${order.id.slice(-4).toUpperCase()}`}</span> đã hoàn tất, đơn hàng được bàn giao đủ số lượng cùng các chứng từ đi kèm.
+                </p>
+                <p className="text-lg">
+                  Kính đề nghị Quý khách hàng thanh toán số tiền công nợ: <span className="text-2xl font-black">{formatCurrency(order.debtAmount)}</span> theo thông tin như sau:
+                </p>
+                
+                <div className="mt-8 p-8 bg-slate-50 rounded-3xl border border-slate-200 space-y-3">
+                  <p className="text-xs font-black text-slate-500 uppercase tracking-widest mb-4">Thông tin thanh toán:</p>
+                  <div className="grid grid-cols-1 gap-2 text-lg">
+                    <p><span className="font-medium text-slate-500">Ngân hàng:</span> <span className="font-black">{printConfig?.bankName || 'TMCP Tiên Phong (TP Bank)'}</span></p>
+                    <p><span className="font-medium text-slate-500">Chủ tài khoản:</span> <span className="font-black">{printConfig?.bankAccountName || 'Công ty TNHH TM-DV-SX An Việt Solution'}</span></p>
+                    <p><span className="font-medium text-slate-500">Số tài khoản:</span> <span className="font-black font-mono">{printConfig?.bankAccountNumber || '90317874102'}</span></p>
+                    <p className="mt-4 pt-4 border-t border-slate-200">
+                      <span className="font-medium text-slate-500">Nội dung:</span> <span className="font-black">Thanh toán đơn hàng {order.orderCode || order.id.slice(-4).toUpperCase()}</span>
+                    </p>
+                  </div>
+                </div>
+                
+                <p className="text-lg font-medium italic mt-10">Xin trân trọng cảm ơn !</p>
+              </div>
+            ) : (
+              <>
+                <table className="w-full mb-10">
+                  <thead>
+                    <tr className="border-b-2 border-slate-900">
+                      <th className="py-4 text-center text-sm font-black uppercase w-[5%]">STT</th>
+                      <th className={cn("py-4 text-left text-sm font-black uppercase", type === 'delivery' ? "w-[35%]" : "w-[35%]")}>Hạng mục</th>
+                      <th className={cn("py-4 text-center text-sm font-black uppercase", type === 'delivery' ? "w-[15%]" : "w-[10%]")}>ĐVT</th>
+                      <th className={cn("py-4 text-center text-sm font-black uppercase", type === 'delivery' ? "w-[15%]" : "w-[10%]")}>SL</th>
+                      {type === 'quote' ? (
+                        <>
+                          <th className="py-4 text-right text-sm font-black uppercase w-[20%]">Đơn giá</th>
+                          <th className="py-4 text-right text-sm font-black uppercase w-[20%]">Thành tiền</th>
+                        </>
+                      ) : (
+                        <th className="py-4 text-right text-sm font-black uppercase w-[30%]">Ghi chú</th>
+                      )}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {order.items.map((item, i) => (
+                      <tr key={i}>
+                        <td className="py-4 text-center text-slate-900 font-bold">{i + 1}</td>
+                        <td className="py-4">
+                          <p className="font-black text-slate-900">{item.name}</p>
+                          {type === 'quote' && <p className="text-xs text-slate-700 mt-1 italic font-bold">{item.printingInfo}</p>}
+                        </td>
+                        <td className="py-4 text-center text-slate-900 font-bold">{item.unit || 'Cái'}</td>
+                        <td className="py-4 text-center text-slate-900 font-bold">{item.quantity}</td>
+                        {type === 'quote' ? (
+                          <>
+                            <td className="py-4 text-right text-slate-900 font-bold">{formatCurrency(item.price)}</td>
+                            <td className="py-4 text-right font-black text-slate-900">{formatCurrency(item.quantity * item.price)}</td>
+                          </>
+                        ) : (
+                          <td className="py-4 text-right text-slate-900 italic text-xs font-bold"></td>
+                        )}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+
+                {type === 'quote' && (
+                  <div className="flex justify-end items-end mb-12">
+                    <div className="w-80 space-y-3">
+                      <div className="flex justify-between text-slate-900 font-bold">
+                        <span>Tạm tính:</span>
+                        <span>{formatCurrency(order.subTotal)}</span>
+                      </div>
+                      <div className="flex justify-between text-slate-900 font-bold">
+                        <span>Thuế VAT ({order.vatRate}%):</span>
+                        <span>{formatCurrency(order.vatAmount)}</span>
+                      </div>
+                      <div className="flex justify-between pt-3 border-t-2 border-slate-900 text-lg font-black text-slate-900">
+                        <span>TỔNG CỘNG:</span>
+                        <span>{formatCurrency(order.totalAmount)}</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+
+            {type === 'delivery' ? (
               <div className="grid grid-cols-2 gap-12 pt-12 border-t border-slate-100">
                 <div className="text-center">
                   <p className="font-bold text-slate-900 mb-20">Người nhận hàng</p>
@@ -426,7 +460,7 @@ const PrintModal = ({ order, type, onClose }: { order: Order, type: 'quote' | 'd
                   <p className="font-bold text-slate-900 mb-20">Người lập phiếu</p>
                 </div>
               </div>
-            )}
+            ) : null}
             
             <div className="mt-20 text-center text-[10px] text-slate-600 uppercase tracking-widest font-black">
               Cảm ơn quý khách đã tin tưởng sử dụng dịch vụ của chúng tôi!
@@ -438,7 +472,7 @@ const PrintModal = ({ order, type, onClose }: { order: Order, type: 'quote' | 'd
   );
 };
 
-const OrderList = ({ orders, onEdit, onDelete, title = 'Quản lý đơn hàng', userRole, users = [], onPrint }: { orders: Order[], onEdit: (o: Order) => void, onDelete?: (id: string) => void, title?: string, userRole?: string, users?: UserProfile[], onPrint: (order: Order, type: 'quote' | 'delivery') => void }) => {
+const OrderList = ({ orders, onEdit, onDelete, title = 'Quản lý đơn hàng', userRole, users = [], onPrint }: { orders: Order[], onEdit: (o: Order) => void, onDelete?: (id: string) => void, title?: string, userRole?: string, users?: UserProfile[], onPrint: (order: Order, type: 'quote' | 'delivery' | 'payment_request') => void }) => {
   const [searchParams, setSearchParams] = useSearchParams();
   
   const filter = searchParams.get('q') || '';
@@ -688,6 +722,13 @@ const OrderList = ({ orders, onEdit, onDelete, title = 'Quản lý đơn hàng',
                           >
                             <Truck className="w-4 h-4" />
                           </button>
+                          <button 
+                            onClick={() => onPrint(order, 'payment_request')}
+                            title="Đề nghị thanh toán"
+                            className="p-2 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-all"
+                          >
+                            <CreditCard className="w-4 h-4" />
+                          </button>
                         </>
                       )}
                       <button 
@@ -721,7 +762,7 @@ const OrderList = ({ orders, onEdit, onDelete, title = 'Quản lý đơn hàng',
   );
 };
 
-const OrderForm = ({ initialOrder, orders = [], onSave, onCancel, userRole, onPrint }: { initialOrder?: Order, orders?: Order[], onSave: (o: any) => void, onCancel: () => void, userRole?: string, onPrint: (order: Order, type: 'quote' | 'delivery') => void }) => {
+const OrderForm = ({ initialOrder, orders = [], onSave, onCancel, userRole, onPrint }: { initialOrder?: Order, orders?: Order[], onSave: (o: any) => void, onCancel: () => void, userRole?: string, onPrint: (order: Order, type: 'quote' | 'delivery' | 'payment_request') => void }) => {
   const isProduction = userRole === 'production';
   const isAdmin = userRole === 'admin';
   const isCompletedAndPaid = initialOrder?.status === 'completed' && initialOrder?.paymentStatus === 'paid';
@@ -814,6 +855,14 @@ const OrderForm = ({ initialOrder, orders = [], onSave, onCancel, userRole, onPr
               >
                 <Truck className="w-5 h-5" />
                 <span className="text-sm font-bold">Giao hàng</span>
+              </button>
+              <button 
+                type="button"
+                onClick={() => onPrint(initialOrder, 'payment_request')}
+                className="p-2 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-xl transition-all flex items-center gap-2 px-3"
+              >
+                <CreditCard className="w-5 h-5" />
+                <span className="text-sm font-bold">Thanh toán</span>
               </button>
             </>
           )}
@@ -1662,6 +1711,106 @@ const SupplierOrderForm = ({
   );
 };
 
+const PaymentRequestTool = ({ orders, onPrint }: { orders: Order[], onPrint: (order: Order, type: 'payment_request') => void }) => {
+  const [searchCode, setSearchCode] = useState('');
+  const [foundOrder, setFoundOrder] = useState<Order | null>(null);
+  const [error, setError] = useState('');
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setFoundOrder(null);
+
+    if (!searchCode.trim()) {
+      setError('Vui lòng nhập mã đơn hàng');
+      return;
+    }
+
+    const order = orders.find(o => {
+      const code = o.orderCode || `AVP-OLD-${o.id.slice(-4).toUpperCase()}`;
+      return code.toLowerCase() === searchCode.trim().toLowerCase();
+    });
+
+    if (order) {
+      setFoundOrder(order);
+    } else {
+      setError('Không tìm thấy đơn hàng với mã này');
+    }
+  };
+
+  return (
+    <div className="max-w-2xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <div className="text-center space-y-2">
+        <h1 className="text-3xl font-black text-slate-900">Phiếu Đề Nghị Thanh Toán</h1>
+        <p className="text-slate-500">Nhập mã đơn hàng để tạo phiếu yêu cầu thanh toán nhanh</p>
+      </div>
+
+      <div className="bg-white p-8 rounded-3xl shadow-xl border border-slate-100 space-y-6">
+        <form onSubmit={handleSearch} className="flex gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
+            <input 
+              type="text" 
+              placeholder="VD: AVP-2304-001..." 
+              className="w-full pl-12 pr-4 py-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 font-bold text-lg"
+              value={searchCode}
+              onChange={(e) => setSearchCode(e.target.value)}
+            />
+          </div>
+          <button 
+            type="submit"
+            className="px-8 bg-slate-900 text-white rounded-2xl font-bold hover:bg-slate-800 transition-all shadow-lg"
+          >
+            Tìm kiếm
+          </button>
+        </form>
+
+        {error && (
+          <div className="p-4 bg-rose-50 text-rose-600 rounded-2xl flex items-center gap-3 animate-in shake duration-300">
+            <AlertCircle className="w-5 h-5" />
+            <span className="font-bold">{error}</span>
+          </div>
+        )}
+
+        {foundOrder && (
+          <div className="p-6 bg-indigo-50 rounded-3xl border border-indigo-100 space-y-6 animate-in zoom-in-95 duration-300">
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-1">Thông tin khách hàng</p>
+                <h3 className="text-xl font-black text-slate-900">{foundOrder.customerName}</h3>
+                <p className="text-slate-600 font-bold">{foundOrder.customerPhone}</p>
+              </div>
+              <div className="text-right">
+                <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-1">Mã đơn hàng</p>
+                <p className="text-lg font-black text-slate-900 font-mono">{foundOrder.orderCode || `AVP-OLD-${foundOrder.id.slice(-4).toUpperCase()}`}</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="p-4 bg-white rounded-2xl shadow-sm">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Tổng tiền</p>
+                <p className="text-lg font-black text-slate-900">{formatCurrency(foundOrder.totalAmount)}</p>
+              </div>
+              <div className="p-4 bg-white rounded-2xl shadow-sm">
+                <p className="text-[10px] font-black text-rose-400 uppercase tracking-widest mb-1">Cần thanh toán</p>
+                <p className="text-lg font-black text-rose-600">{formatCurrency(foundOrder.debtAmount)}</p>
+              </div>
+            </div>
+
+            <button 
+              onClick={() => onPrint(foundOrder, 'payment_request')}
+              className="w-full flex items-center justify-center gap-3 bg-indigo-600 text-white py-4 rounded-2xl font-bold hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-100"
+            >
+              <Printer className="w-6 h-6" />
+              Xuất phiếu đề nghị thanh toán
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 const ActivityLogs = ({ logs }: { logs: ActivityLog[] }) => (
   <div className="space-y-6 animate-in fade-in duration-500">
     <h1 className="text-2xl font-bold text-slate-900">Lịch sử hoạt động</h1>
@@ -1725,6 +1874,9 @@ const DEFAULT_PRINT_CONFIG: PrintConfig = {
   tier2Discount: 0.7,
   tier3Threshold: 1000,
   tier3Discount: 0.6,
+  bankName: 'TMCP Tiên Phong (TP Bank)',
+  bankAccountName: 'Công ty TNHH TM-DV-SX An Việt Solution',
+  bankAccountNumber: '90317874102',
 };
 
 const PriceCalculator = ({ 
@@ -2187,6 +2339,42 @@ const PriceCalculator = ({
               <input type="number" step="0.01" value={editingConfig.tier3Discount} onChange={(e) => setEditingConfig({ ...editingConfig, tier3Discount: parseFloat(e.target.value) || 0 })} className="w-full px-4 py-3 rounded-xl border border-slate-200 text-base" />
             </div>
           </div>
+          
+          <div className="pt-4 border-t border-slate-100 space-y-4">
+            <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest">Thông tin tài khoản nhận tiền</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-slate-500 uppercase">Tên ngân hàng</label>
+                <input 
+                  type="text" 
+                  value={editingConfig.bankName || ''} 
+                  onChange={(e) => setEditingConfig({ ...editingConfig, bankName: e.target.value })} 
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 text-base" 
+                  placeholder="VD: Vietcombank"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-slate-500 uppercase">Số tài khoản</label>
+                <input 
+                  type="text" 
+                  value={editingConfig.bankAccountNumber || ''} 
+                  onChange={(e) => setEditingConfig({ ...editingConfig, bankAccountNumber: e.target.value })} 
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 text-base font-mono" 
+                  placeholder="VD: 0123456789"
+                />
+              </div>
+              <div className="space-y-2 md:col-span-2">
+                <label className="text-xs font-bold text-slate-500 uppercase">Tên chủ tài khoản</label>
+                <input 
+                  type="text" 
+                  value={editingConfig.bankAccountName || ''} 
+                  onChange={(e) => setEditingConfig({ ...editingConfig, bankAccountName: e.target.value })} 
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 text-base" 
+                  placeholder="VD: NGUYEN VAN A"
+                />
+              </div>
+            </div>
+          </div>
         </div>
         <button onClick={handleSaveConfig} className="w-full bg-indigo-600 text-white py-3 rounded-2xl font-black hover:bg-indigo-700 transition-all text-base shadow-lg">
           Lưu cấu hình chung
@@ -2637,7 +2825,7 @@ export default function App() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [orders, setOrders] = useState<Order[]>([]);
-  const [printOrder, setPrintOrder] = useState<{ order: Order, type: 'quote' | 'delivery' } | null>(null);
+  const [printOrder, setPrintOrder] = useState<{ order: Order, type: 'quote' | 'delivery' | 'payment_request' } | null>(null);
   const [supplierOrders, setSupplierOrders] = useState<SupplierOrder[]>([]);
   const [logs, setLogs] = useState<ActivityLog[]>([]);
   const [users, setUsers] = useState<UserProfile[]>([]);
@@ -2742,7 +2930,16 @@ export default function App() {
         // Seed initial data
         setDoc(doc(db, 'settings_print_config', 'main'), DEFAULT_PRINT_CONFIG);
       } else {
-        setPrintConfig(docSnap.data() as PrintConfig);
+        const data = docSnap.data() as PrintConfig;
+        // If bank info is missing from existing doc, update it with defaults
+        if (!data.bankAccountNumber) {
+          updateDoc(doc(db, 'settings_print_config', 'main'), {
+            bankName: DEFAULT_PRINT_CONFIG.bankName,
+            bankAccountName: DEFAULT_PRINT_CONFIG.bankAccountName,
+            bankAccountNumber: DEFAULT_PRINT_CONFIG.bankAccountNumber
+          });
+        }
+        setPrintConfig(data);
       }
     });
 
@@ -3114,6 +3311,7 @@ export default function App() {
                 {profile?.role !== 'production' && (
                   <>
                     <SidebarItem to="/orders/new" icon={Plus} label="Tạo đơn hàng" active={location.pathname === '/orders/new'} />
+                    <SidebarItem to="/payment-request" icon={CreditCard} label="Đề nghị thanh toán" active={location.pathname === '/payment-request'} />
                     <SidebarItem icon={Calculator} label="Tính giá in" onClick={() => setCalculatorOpen(!isCalculatorOpen)} />
                     <SidebarItem to="/suppliers" icon={Truck} label="Nhà cung cấp" active={location.pathname.startsWith('/suppliers')} />
                   </>
@@ -3183,6 +3381,10 @@ export default function App() {
                 <Route path="/orders/edit" element={
                   <OrderForm orders={orders} initialOrder={editingOrder || undefined} onSave={handleSaveOrder} onCancel={() => navigate(-1)} userRole={profile?.role} onPrint={(order, type) => setPrintOrder({ order, type })} />
                 } />
+                <Route path="/payment-request" element={
+                  profile?.role === 'production' ? <Navigate to="/orders" /> :
+                  <PaymentRequestTool orders={orders} onPrint={(order, type) => setPrintOrder({ order, type })} />
+                } />
                 <Route path="/suppliers" element={
                   profile?.role === 'production' ? <Navigate to="/orders" /> :
                   <SupplierOrderList 
@@ -3231,6 +3433,7 @@ export default function App() {
               order={printOrder.order} 
               type={printOrder.type} 
               onClose={() => setPrintOrder(null)} 
+              printConfig={printConfig}
             />
           )}
         </AnimatePresence>

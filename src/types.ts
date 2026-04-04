@@ -104,4 +104,7 @@ export interface PrintConfig {
   tier2Discount: number;
   tier3Threshold: number;
   tier3Discount: number;
+  bankName?: string;
+  bankAccountName?: string;
+  bankAccountNumber?: string;
 }
