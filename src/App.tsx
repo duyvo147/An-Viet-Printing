@@ -371,7 +371,7 @@ const PrintModal = ({ order, type, onClose, printConfig }: { order: Order, type:
                   Căn cứ theo đơn đặt hàng <span className="font-black underline">{order.orderCode || `AVP-OLD-${order.id.slice(-4).toUpperCase()}`}</span> đã hoàn tất, đơn hàng được bàn giao đủ số lượng cùng các chứng từ đi kèm.
                 </p>
                 <p className="text-lg">
-                  Kính đề nghị Quý khách hàng thanh toán số tiền công nợ: <span className="text-2xl font-black">{formatCurrency(order.debtAmount)}</span> theo thông tin như sau:
+                  Kính đề nghị Quý khách hàng thanh toán số tiền công nợ: <span className="font-black">{formatCurrency(order.debtAmount)}</span> theo thông tin như sau:
                 </p>
                 
                 <div className="mt-8 space-y-3">
