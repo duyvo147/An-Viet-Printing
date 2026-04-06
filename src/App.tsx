@@ -767,7 +767,8 @@ const OrderForm = ({ initialOrder, orders = [], onSave, onCancel, userRole, onPr
   const isAdmin = userRole === 'admin';
   const isCompletedAndPaid = initialOrder?.status === 'completed' && initialOrder?.paymentStatus === 'paid';
   const isLocked = !isAdmin && isCompletedAndPaid;
-  const isReadOnly = isProduction || isLocked; // Production or Locked orders are read-only for most fields
+  const isReadOnly = isLocked; // Only locked orders are fully read-only
+  const isStaffReadOnly = isProduction; // Production staff can't edit most fields
 
   const [formData, setFormData] = useState({
     customerName: initialOrder?.customerName || '',
@@ -983,9 +984,9 @@ const OrderForm = ({ initialOrder, orders = [], onSave, onCancel, userRole, onPr
               <>
                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Đơn giá</span>
                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Thành tiền</span>
+                <span></span>
               </>
             )}
-            <span></span>
           </div>
           <div className="space-y-4">
             {formData.items.map((item, index) => (
@@ -1001,7 +1002,7 @@ const OrderForm = ({ initialOrder, orders = [], onSave, onCancel, userRole, onPr
                   </div>
                   <input 
                     required
-                    disabled={isReadOnly}
+                    disabled={isReadOnly || isStaffReadOnly}
                     placeholder="Tên sản phẩm"
                     className="w-full px-4 py-2 bg-white border-none rounded-xl focus:ring-2 focus:ring-indigo-500 disabled:opacity-60"
                     value={item.name}
@@ -1009,7 +1010,7 @@ const OrderForm = ({ initialOrder, orders = [], onSave, onCancel, userRole, onPr
                   />
                   <input 
                     required
-                    disabled={isReadOnly}
+                    disabled={isReadOnly || isStaffReadOnly}
                     placeholder="ĐVT"
                     className="w-full px-4 py-2 bg-white border-none rounded-xl focus:ring-2 focus:ring-indigo-500 disabled:opacity-60 text-center"
                     value={item.unit}
@@ -1017,7 +1018,7 @@ const OrderForm = ({ initialOrder, orders = [], onSave, onCancel, userRole, onPr
                   />
                   <input 
                     required
-                    disabled={isReadOnly}
+                    disabled={isReadOnly || isStaffReadOnly}
                     type="number"
                     placeholder="SL"
                     className="w-full px-4 py-2 bg-white border-none rounded-xl focus:ring-2 focus:ring-indigo-500 disabled:opacity-60 text-center"
@@ -1028,7 +1029,7 @@ const OrderForm = ({ initialOrder, orders = [], onSave, onCancel, userRole, onPr
                     <>
                       <input 
                         required
-                        disabled={isReadOnly}
+                        disabled={isReadOnly || isStaffReadOnly}
                         type="number"
                         placeholder="Đơn giá"
                         className="w-full px-4 py-2 bg-white border-none rounded-xl focus:ring-2 focus:ring-indigo-500 disabled:opacity-60 text-right"
@@ -1043,7 +1044,7 @@ const OrderForm = ({ initialOrder, orders = [], onSave, onCancel, userRole, onPr
                   {!isProduction && (
                     <button 
                       type="button" 
-                      disabled={isReadOnly}
+                      disabled={isReadOnly || isStaffReadOnly}
                       onClick={() => handleRemoveItem(index)}
                       className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors flex items-center justify-center disabled:opacity-30"
                     >
@@ -1055,7 +1056,7 @@ const OrderForm = ({ initialOrder, orders = [], onSave, onCancel, userRole, onPr
                   <div className="space-y-1">
                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">Thông tin sản phẩm</label>
                     <textarea 
-                      disabled={isReadOnly}
+                      disabled={isReadOnly || isStaffReadOnly}
                       placeholder="Thông tin in ấn (VD: Kích thước, chất liệu, gia công...)"
                       className="w-full px-4 py-2 bg-white border-none rounded-xl focus:ring-2 focus:ring-indigo-500 text-sm disabled:opacity-60"
                       rows={2}
@@ -1066,7 +1067,7 @@ const OrderForm = ({ initialOrder, orders = [], onSave, onCancel, userRole, onPr
                   <div className="space-y-1">
                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-1">Ghi chú sản xuất</label>
                     <textarea 
-                      disabled={isReadOnly || (isProduction && !!initialOrder?.items?.[index]?.productionNote)}
+                      disabled={isReadOnly || isStaffReadOnly || isProduction}
                       placeholder="Ghi chú cho bộ phận sản xuất..."
                       className="w-full px-4 py-2 bg-white border-none rounded-xl focus:ring-2 focus:ring-indigo-500 text-sm disabled:opacity-60"
                       rows={2}
@@ -3081,7 +3082,7 @@ export default function App() {
           
           if (oldNote !== newNote) {
             const itemName = item.name || `Sản phẩm ${index + 1}`;
-            changes.push(`Ghi chú ${itemName}: "${oldNote || 'trống'}" -> "${newNote || 'trống'}"`);
+            changes.push(`Ghi chú sản xuất ${itemName}: "${oldNote || 'trống'}" -> "${newNote || 'trống'}"`);
           }
         });
 

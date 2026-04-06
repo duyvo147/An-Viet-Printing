@@ -29,6 +29,7 @@
             "properties": {
               "name": { "type": "string" },
               "printingInfo": { "type": "string" },
+              "productionNote": { "type": "string" },
               "quantity": { "type": "number" },
               "price": { "type": "number" }
             }
