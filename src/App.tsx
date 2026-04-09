@@ -347,16 +347,11 @@ const PrintModal = ({ order, type, onClose, printConfig }: { order: Order, type:
             </div>
 
             {type !== 'payment_request' && (
-              <div className="grid grid-cols-2 gap-12 mb-10">
-                <div>
-                  <h3 className="text-xs font-black text-slate-600 uppercase tracking-widest mb-3">Khách hàng</h3>
-                  <p className="text-lg font-black text-slate-900">{order.customerName}</p>
-                  <p className="text-slate-900 font-bold">{order.customerPhone}</p>
-                  {order.customerAddress && <p className="text-slate-900 text-sm mt-1 font-bold">{order.customerAddress}</p>}
-                  {order.customerTaxId && <p className="text-slate-900 text-sm mt-1 font-bold">MST: {order.customerTaxId}</p>}
-                  {type === 'delivery' && order.vatInvoiceCode && <p className="text-slate-900 text-sm mt-1 font-bold">HĐ VAT: {order.vatInvoiceCode}</p>}
-                </div>
-                {/* Removed Order Info for Delivery as per request */}
+              <div className="mb-10 space-y-1 text-slate-900">
+                <p className="text-lg"><span className="font-medium">Khách hàng:</span> <span className="font-black">{order.customerName}</span></p>
+                {order.customerAddress && <p className="text-lg"><span className="font-medium">Địa chỉ:</span> <span className="font-bold">{order.customerAddress}</span></p>}
+                {order.customerTaxId && <p className="text-lg"><span className="font-medium">MST:</span> <span className="font-bold">{order.customerTaxId}</span></p>}
+                {type === 'delivery' && order.vatInvoiceCode && <p className="text-lg"><span className="font-medium">HĐ VAT:</span> <span className="font-bold">{order.vatInvoiceCode}</span></p>}
               </div>
             )}
 
