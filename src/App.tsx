@@ -301,6 +301,8 @@ const Dashboard = ({ orders, supplierOrders, userRole, users = [] }: { orders: O
 };
 
 const PrintModal = ({ order, type, onClose, printConfig }: { order: Order, type: 'quote' | 'delivery' | 'payment_request', onClose: () => void, printConfig?: PrintConfig }) => {
+  const [itemNotes, setItemNotes] = useState<string[]>(order.items.map(() => ''));
+
   const handlePrint = () => {
     window.print();
   };
@@ -418,7 +420,19 @@ const PrintModal = ({ order, type, onClose, printConfig }: { order: Order, type:
                             <td className="py-4 text-right font-black text-slate-900">{formatCurrency(item.quantity * item.price)}</td>
                           </>
                         ) : (
-                          <td className="py-4 text-right text-slate-900 italic text-xs font-bold"></td>
+                          <td className="py-4 text-right text-slate-900 italic text-xs font-bold">
+                            <textarea 
+                              className="w-full bg-transparent border-none focus:ring-0 resize-none text-right p-0 font-bold italic placeholder:text-slate-300 print:placeholder:text-transparent"
+                              rows={1}
+                              placeholder="Nhập ghi chú..."
+                              value={itemNotes[i]}
+                              onChange={(e) => {
+                                const newNotes = [...itemNotes];
+                                newNotes[i] = e.target.value;
+                                setItemNotes(newNotes);
+                              }}
+                            />
+                          </td>
                         )}
                       </tr>
                     ))}
