@@ -17,6 +17,7 @@ import {
   Users, 
   LogOut, 
   Plus, 
+  Download,
   Search, 
   Filter, 
   ChevronRight, 
@@ -48,6 +49,7 @@ import {
   AreaChart,
   Area
 } from 'recharts';
+import * as XLSX from 'xlsx';
 import { format, subDays, startOfDay, endOfDay, isWithinInterval, parseISO } from 'date-fns';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -110,6 +112,240 @@ const StatCard = ({ title, value, icon: Icon, color, trend }: { title: string, v
 );
 
 // --- Pages ---
+
+// --- Components ---
+
+const SummaryReport = ({ orders, users = [] }: { orders: Order[], users: UserProfile[] }) => {
+  const [filter, setFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState<OrderStatus | 'all'>('all');
+  const [paymentFilter, setPaymentFilter] = useState<PaymentStatus | 'all'>('all');
+  const [dateRange, setDateRange] = useState({
+    start: format(subDays(new Date(), 30), 'yyyy-MM-dd'),
+    end: format(new Date(), 'yyyy-MM-dd')
+  });
+
+  const getCreatorName = (uid: string) => {
+    const creator = users.find(u => u.uid === uid);
+    return creator ? (creator.displayName || creator.email) : 'Không rõ';
+  };
+
+  const reportData = useMemo(() => {
+    const rows: any[] = [];
+    
+    orders.forEach(order => {
+      const orderCode = order.orderCode || `AVP-OLD-${order.id.slice(-4).toUpperCase()}`;
+      const orderDate = order.createdAt.toDate();
+      const creatorName = getCreatorName(order.createdBy);
+      
+      const matchesSearch = order.customerName.toLowerCase().includes(filter.toLowerCase()) || 
+                           orderCode.toLowerCase().includes(filter.toLowerCase());
+      const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
+      const matchesPayment = paymentFilter === 'all' || order.paymentStatus === paymentFilter;
+      
+      let matchesDate = true;
+      if (dateRange.start || dateRange.end) {
+        const start = dateRange.start ? startOfDay(parseISO(dateRange.start)) : null;
+        const end = dateRange.end ? endOfDay(parseISO(dateRange.end)) : null;
+        if (start && end) matchesDate = isWithinInterval(orderDate, { start, end });
+        else if (start) matchesDate = orderDate >= start;
+        else if (end) matchesDate = orderDate <= end;
+      }
+
+      if (matchesSearch && matchesStatus && matchesPayment && matchesDate) {
+        order.items.forEach(item => {
+          rows.push({
+            id: order.id,
+            orderCode,
+            createdAt: format(orderDate, 'dd/MM/yyyy HH:mm'),
+            customerName: order.customerName,
+            productName: item.name,
+            unit: item.unit,
+            quantity: item.quantity,
+            price: item.price,
+            amount: item.quantity * item.price,
+            status: order.status,
+            paymentStatus: order.paymentStatus,
+            createdBy: creatorName,
+            vatInvoiceCode: order.vatInvoiceCode || ''
+          });
+        });
+      }
+    });
+
+    return rows;
+  }, [orders, filter, statusFilter, paymentFilter, dateRange, users]);
+
+  const exportExcel = () => {
+    const wsData = reportData.map(r => ({
+      'Mã Đơn': r.orderCode,
+      'Ngày Tạo': r.createdAt,
+      'Khách Hàng': r.customerName,
+      'Sản Phẩm': r.productName,
+      'ĐVT': r.unit,
+      'Số Lượng': r.quantity,
+      'Đơn Giá': r.price,
+      'Thành Tiền': r.amount,
+      'Trạng Thái': r.status === 'quote' ? 'Báo giá' : r.status === 'pending' ? 'Chờ xử lý' : r.status === 'processing' ? 'Đang in' : r.status === 'completed' ? 'Hoàn thành' : 'Đã hủy',
+      'Thanh Toán': r.paymentStatus === 'paid' ? 'Đã trả' : r.paymentStatus === 'partial' ? 'Trả một phần' : 'Chưa trả',
+      'Mã VAT': r.vatInvoiceCode,
+      'Người Tạo': r.createdBy
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(wsData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Báo cáo đơn hàng");
+    XLSX.writeFile(wb, `Bao_cao_don_hang_${format(new Date(), 'ddMMyyyy_HHmm')}.xlsx`);
+  };
+
+  const handlePrint = () => {
+    window.print();
+  };
+
+  return (
+    <div className="mt-12 bg-white p-6 rounded-2xl shadow-sm border border-slate-100 print:shadow-none print:border-none print:p-0">
+      <div className="hidden print:block mb-8">
+        <h1 className="text-2xl font-bold text-slate-900 border-b-2 border-slate-900 pb-2">BÁO CÁO CHI TIẾT ĐƠN HÀNG</h1>
+        <p className="text-sm text-slate-500 mt-2">Ngày xuất: {format(new Date(), 'dd/MM/yyyy HH:mm')}</p>
+        <p className="text-sm text-slate-500">Kỳ báo cáo: {format(parseISO(dateRange.start), 'dd/MM/yyyy')} - {format(parseISO(dateRange.end), 'dd/MM/yyyy')}</p>
+      </div>
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 print:hidden">
+        <div>
+          <h2 className="text-xl font-bold text-slate-900">Báo cáo chi tiết đơn hàng</h2>
+          <p className="text-sm text-slate-500">Xem và xuất báo cáo tổng hợp các hạng mục in ấn.</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button 
+            onClick={exportExcel}
+            className="px-4 py-2 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition-all flex items-center gap-2 text-sm"
+          >
+            <Download className="w-4 h-4" /> Xuất Excel
+          </button>
+          <button 
+            onClick={handlePrint}
+            className="px-4 py-2 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-all flex items-center gap-2 text-sm"
+          >
+            <Printer className="w-4 h-4" /> In PDF
+          </button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6 print:hidden">
+        <div className="relative col-span-1 md:col-span-2">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
+          <input 
+            type="text" 
+            placeholder="Tìm theo tên khách hoặc mã đơn..." 
+            className="w-full pl-10 pr-4 py-2 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 text-sm"
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+          />
+        </div>
+        <select 
+          className="px-4 py-2 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 text-sm"
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value as any)}
+        >
+          <option value="all">Tất cả trạng thái</option>
+          <option value="quote">Báo giá</option>
+          <option value="pending">Chờ xử lý</option>
+          <option value="processing">Đang in</option>
+          <option value="completed">Hoàn thành</option>
+        </select>
+        <select 
+          className="px-4 py-2 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 text-sm"
+          value={paymentFilter}
+          onChange={(e) => setPaymentFilter(e.target.value as any)}
+        >
+          <option value="all">Tất cả thanh toán</option>
+          <option value="paid">Đã trả</option>
+          <option value="partial">Trả một phần</option>
+          <option value="unpaid">Chưa trả</option>
+        </select>
+        <div className="md:col-span-4 flex items-center gap-4 bg-slate-50 p-2 rounded-xl">
+          <label className="text-xs font-bold text-slate-500 uppercase ml-2">Từ ngày:</label>
+          <input 
+            type="date" 
+            className="text-sm bg-white border border-slate-200 rounded-lg px-2 py-1"
+            value={dateRange.start}
+            onChange={(e) => setDateRange({...dateRange, start: e.target.value})}
+          />
+          <label className="text-xs font-bold text-slate-500 uppercase">Đến ngày:</label>
+          <input 
+            type="date" 
+            className="text-sm bg-white border border-slate-200 rounded-lg px-2 py-1"
+            value={dateRange.end}
+            onChange={(e) => setDateRange({...dateRange, end: e.target.value})}
+          />
+        </div>
+      </div>
+
+      <div className="overflow-x-auto print:overflow-visible">
+        <table className="w-full text-left text-[10px] border-collapse">
+          <thead>
+            <tr className="bg-slate-50 border-b border-slate-200 print:bg-slate-100">
+              <th className="px-2 py-3 font-bold uppercase text-slate-500">Mã Đơn</th>
+              <th className="px-2 py-3 font-bold uppercase text-slate-500">Ngày</th>
+              <th className="px-2 py-3 font-bold uppercase text-slate-500">Khách Hàng</th>
+              <th className="px-2 py-3 font-bold uppercase text-slate-500">Sản Phẩm</th>
+              <th className="px-2 py-3 font-bold uppercase text-slate-500">ĐVT</th>
+              <th className="px-2 py-3 font-bold uppercase text-slate-500 text-center">SL</th>
+              <th className="px-2 py-3 font-bold uppercase text-slate-500 text-right">Đơn Giá</th>
+              <th className="px-2 py-3 font-bold uppercase text-slate-500 text-right">Thành Tiền</th>
+              <th className="px-2 py-3 font-bold uppercase text-slate-500">T.Toán</th>
+              <th className="px-2 py-3 font-bold uppercase text-slate-500">Trạng Thái</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100 print:divide-slate-200">
+            {reportData.map((row, i) => (
+              <tr key={i} className="hover:bg-slate-50 print:hover:bg-transparent">
+                <td className="px-2 py-2 font-mono text-indigo-600 font-bold">{row.orderCode}</td>
+                <td className="px-2 py-2 text-slate-500 whitespace-nowrap">{row.createdAt.split(' ')[0]}</td>
+                <td className="px-2 py-2 font-bold text-slate-900">{row.customerName}</td>
+                <td className="px-2 py-2 text-slate-700">{row.productName}</td>
+                <td className="px-2 py-2 text-center text-slate-600">{row.unit}</td>
+                <td className="px-2 py-2 text-center font-bold">{row.quantity}</td>
+                <td className="px-2 py-2 text-right">{formatCurrency(row.price)}</td>
+                <td className="px-2 py-2 text-right font-bold text-slate-900">{formatCurrency(row.amount)}</td>
+                <td className="px-2 py-2 whitespace-nowrap">
+                  <span className={cn(
+                    "text-[8px] font-bold px-1.5 py-0.5 rounded-full outline outline-1",
+                    row.paymentStatus === 'paid' ? "outline-emerald-200 text-emerald-600" :
+                    row.paymentStatus === 'partial' ? "outline-amber-200 text-amber-600" : "outline-rose-200 text-rose-600"
+                  )}>
+                    {row.paymentStatus === 'paid' ? 'Đã trả' : 
+                     row.paymentStatus === 'partial' ? 'Cọc/Một phần' : 'Chưa trả'}
+                  </span>
+                </td>
+                <td className="px-2 py-2">
+                  <span className={cn(
+                    "text-[8px] font-bold px-1.5 py-0.5 rounded-full",
+                    row.status === 'completed' ? "bg-emerald-50 text-emerald-600" :
+                    row.status === 'processing' ? "bg-indigo-50 text-indigo-600" :
+                    row.status === 'quote' ? "bg-slate-100 text-slate-600" : "bg-amber-50 text-amber-600"
+                  )}>
+                    {row.status === 'quote' ? 'Báo giá' :
+                     row.status === 'pending' ? 'Chờ xử lý' : 
+                     row.status === 'processing' ? 'Đang in' : 
+                     row.status === 'completed' ? 'Hoàn thành' : 'Đã hủy'}
+                  </span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot>
+            <tr className="bg-slate-50 font-bold whitespace-nowrap">
+              <td colSpan={7} className="px-2 py-3 text-right text-slate-600">TỔNG CỘNG:</td>
+              <td className="px-2 py-3 text-right text-indigo-600 text-xs">
+                {formatCurrency(reportData.reduce((sum, r) => sum + r.amount, 0))}
+              </td>
+              <td></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+  );
+};
 
 const Dashboard = ({ orders, supplierOrders, userRole, users = [] }: { orders: Order[], supplierOrders: SupplierOrder[], userRole?: string, users?: UserProfile[] }) => {
   const [dateRange, setDateRange] = useState({
@@ -207,7 +443,7 @@ const Dashboard = ({ orders, supplierOrders, userRole, users = [] }: { orders: O
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 print:hidden">
         <div>
           <h1 className="text-3xl font-bold text-slate-900">Tổng quan</h1>
           <p className="text-slate-500">Chào mừng bạn trở lại hệ thống quản lý in ấn.</p>
@@ -237,7 +473,7 @@ const Dashboard = ({ orders, supplierOrders, userRole, users = [] }: { orders: O
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 print:hidden">
         <StatCard title="Doanh thu" value={formatCurrency(stats.totalRevenue)} icon={DollarSign} color="bg-indigo-500" />
         <StatCard title="Chi phí" value={formatCurrency(stats.totalExpenses)} icon={Truck} color="bg-rose-500" />
         <StatCard title="Lợi nhuận" value={formatCurrency(stats.totalRevenue - stats.totalExpenses)} icon={TrendingUp} color="bg-emerald-500" />
@@ -245,7 +481,7 @@ const Dashboard = ({ orders, supplierOrders, userRole, users = [] }: { orders: O
         <StatCard title="Chờ xử lý" value={stats.pendingOrders.toString()} icon={Clock} color="bg-amber-500" />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 print:hidden">
         <div className="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
           <h2 className="text-lg font-bold text-slate-900 mb-6">Biểu đồ thu chi</h2>
           <div className="h-[300px] w-full">
@@ -296,6 +532,10 @@ const Dashboard = ({ orders, supplierOrders, userRole, users = [] }: { orders: O
           </Link>
         </div>
       </div>
+
+      {userRole === 'admin' && (
+        <SummaryReport orders={orders} users={users} />
+      )}
     </div>
   );
 };
@@ -3301,7 +3541,7 @@ export default function App() {
         )}
           {/* Sidebar */}
           <aside className={cn(
-            "fixed inset-y-0 left-0 z-50 w-72 bg-white border-r border-slate-100 transition-transform duration-300 lg:relative lg:translate-x-0",
+            "fixed inset-y-0 left-0 z-50 w-72 bg-white border-r border-slate-100 transition-transform duration-300 lg:relative lg:translate-x-0 print:hidden",
             !isSidebarOpen && "-translate-x-full"
           )}>
             <div className="h-full flex flex-col p-6">
@@ -3359,8 +3599,8 @@ export default function App() {
           </aside>
 
           {/* Main Content */}
-          <main className="flex-1 min-w-0 overflow-hidden">
-            <header className="h-16 bg-white border-b border-slate-100 flex items-center justify-between px-8 lg:hidden">
+          <main className="flex-1 min-w-0 overflow-hidden print:overflow-visible">
+            <header className="h-16 bg-white border-b border-slate-100 flex items-center justify-between px-8 lg:hidden print:hidden">
               <button onClick={() => setSidebarOpen(!isSidebarOpen)} className="p-2 hover:bg-slate-100 rounded-lg">
                 {isSidebarOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
               </button>
@@ -3368,7 +3608,7 @@ export default function App() {
               <div className="w-10" />
             </header>
 
-            <div className="p-8 max-w-[1600px] mx-auto h-[calc(100vh-4rem)] lg:h-screen overflow-y-auto scrollbar-hide">
+            <div className="p-8 max-w-[1600px] mx-auto h-[calc(100vh-4rem)] lg:h-screen overflow-y-auto scrollbar-hide print:h-auto print:overflow-visible print:p-0">
               <Routes>
                 <Route path="/" element={
                   profile?.role === 'admin' ? <Dashboard orders={orders} supplierOrders={supplierOrders} userRole={profile?.role} users={users} /> : 
