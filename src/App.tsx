@@ -662,8 +662,8 @@ const PrintModal = ({ order, type, onClose, printConfig }: { order: Order, type:
                         ) : (
                           <td className="py-4 text-right text-slate-900 italic text-xs font-bold">
                             <textarea 
-                              className="w-full bg-transparent border-none focus:ring-0 resize-none text-right p-0 font-bold italic placeholder:text-slate-300 print:placeholder:text-transparent"
-                              rows={1}
+                              className="w-full bg-transparent border-none focus:ring-0 resize-none text-right p-0 font-bold italic placeholder:text-slate-300 print:hidden"
+                              rows={Math.max(1, itemNotes[i].split('\n').length)}
                               placeholder="Nhập ghi chú..."
                               value={itemNotes[i]}
                               onChange={(e) => {
@@ -672,6 +672,9 @@ const PrintModal = ({ order, type, onClose, printConfig }: { order: Order, type:
                                 setItemNotes(newNotes);
                               }}
                             />
+                            <div className="hidden print:block text-right whitespace-pre-wrap break-words leading-relaxed">
+                              {itemNotes[i]}
+                            </div>
                           </td>
                         )}
                       </tr>
