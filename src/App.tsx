@@ -730,13 +730,22 @@ const OrderList = ({ orders, onEdit, onDelete, title = 'Quản lý đơn hàng',
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   
   const filter = searchParams.get('q') || '';
-  const statusFilter = (searchParams.get('status') as OrderStatus | 'all') || 'all';
+  const statusFilterRaw = searchParams.get('status') || '';
+  const selectedStatuses = statusFilterRaw ? statusFilterRaw.split(',') : [];
   const paymentFilter = (searchParams.get('payment') as PaymentStatus | 'all') || 'all';
   const creatorFilter = searchParams.get('creator') || 'all';
   const dateRange = {
     start: searchParams.get('start') || '',
     end: searchParams.get('end') || ''
   };
+
+  const STATUS_OPTIONS: { id: OrderStatus, label: string, color: string }[] = [
+    { id: 'quote', label: 'Báo giá', color: 'bg-slate-400' },
+    { id: 'pending', label: 'Chờ xử lý', color: 'bg-amber-400' },
+    { id: 'processing', label: 'Đang in', color: 'bg-indigo-400' },
+    { id: 'completed', label: 'Hoàn thành', color: 'bg-emerald-400' },
+    { id: 'cancelled', label: 'Đã hủy', color: 'bg-rose-400' },
+  ];
 
   const updateParams = (updates: Record<string, string | null>) => {
     setSearchParams(prev => {
@@ -751,8 +760,17 @@ const OrderList = ({ orders, onEdit, onDelete, title = 'Quản lý đơn hàng',
     }, { replace: true });
   };
 
+  const toggleStatus = (status: string) => {
+    let newSelected: string[];
+    if (selectedStatuses.includes(status)) {
+      newSelected = selectedStatuses.filter(s => s !== status);
+    } else {
+      newSelected = [...selectedStatuses, status];
+    }
+    updateParams({ status: newSelected.length > 0 ? newSelected.join(',') : null });
+  };
+
   const setFilter = (val: string) => updateParams({ q: val });
-  const setStatusFilter = (val: string) => updateParams({ status: val });
   const setPaymentFilter = (val: string) => updateParams({ payment: val });
   const setCreatorFilter = (val: string) => updateParams({ creator: val });
   const setDateRange = (range: { start: string, end: string }) => updateParams({ start: range.start, end: range.end });
@@ -767,7 +785,7 @@ const OrderList = ({ orders, onEdit, onDelete, title = 'Quản lý đơn hàng',
     const matchesSearch = o.customerName.toLowerCase().includes(filter.toLowerCase()) || 
                          orderCode.toLowerCase().includes(filter.toLowerCase()) ||
                          o.vatInvoiceCode.toLowerCase().includes(filter.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || o.status === statusFilter;
+    const matchesStatus = selectedStatuses.length === 0 || selectedStatuses.includes(o.status);
     const matchesPayment = paymentFilter === 'all' || o.paymentStatus === paymentFilter;
     const matchesCreator = creatorFilter === 'all' || o.createdBy === creatorFilter;
     
@@ -806,49 +824,71 @@ const OrderList = ({ orders, onEdit, onDelete, title = 'Quản lý đơn hàng',
       </div>
 
       <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex flex-col gap-4">
-        <div className="flex flex-col md:flex-row gap-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
-            <input 
-              type="text" 
-              placeholder="Tìm theo tên khách hàng hoặc mã VAT..." 
-              className="w-full pl-10 pr-4 py-2 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 transition-all"
-              value={filter}
-              onChange={(e) => setFilter(e.target.value)}
-            />
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
+              <input 
+                type="text" 
+                placeholder="Tìm theo tên khách hàng hoặc mã VAT..." 
+                className="w-full pl-10 pr-4 py-2 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 transition-all"
+                value={filter}
+                onChange={(e) => setFilter(e.target.value)}
+              />
+            </div>
+            <select 
+              className="px-4 py-2 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 transition-all text-slate-600"
+              value={paymentFilter}
+              onChange={(e) => setPaymentFilter(e.target.value as any)}
+            >
+              <option value="all">Tất cả thanh toán</option>
+              <option value="unpaid">Chưa trả</option>
+              <option value="partial">Trả một phần</option>
+              <option value="paid">Đã trả</option>
+            </select>
+            <select 
+              className="px-4 py-2 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 transition-all text-slate-600"
+              value={creatorFilter}
+              onChange={(e) => setCreatorFilter(e.target.value)}
+            >
+              <option value="all">Tất cả người tạo</option>
+              {users.map(u => (
+                <option key={u.uid} value={u.uid}>{u.displayName || u.email}</option>
+              ))}
+            </select>
           </div>
-          <select 
-            className="px-4 py-2 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 transition-all text-slate-600"
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as any)}
-          >
-            <option value="all">Tất cả trạng thái</option>
-            <option value="quote">Báo giá</option>
-            <option value="pending">Chờ xử lý</option>
-            <option value="processing">Đang in</option>
-            <option value="completed">Hoàn thành</option>
-            <option value="cancelled">Đã hủy</option>
-          </select>
-          <select 
-            className="px-4 py-2 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 transition-all text-slate-600"
-            value={paymentFilter}
-            onChange={(e) => setPaymentFilter(e.target.value as any)}
-          >
-            <option value="all">Tất cả thanh toán</option>
-            <option value="unpaid">Chưa trả</option>
-            <option value="partial">Trả một phần</option>
-            <option value="paid">Đã trả</option>
-          </select>
-          <select 
-            className="px-4 py-2 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 transition-all text-slate-600"
-            value={creatorFilter}
-            onChange={(e) => setCreatorFilter(e.target.value)}
-          >
-            <option value="all">Tất cả người tạo</option>
-            {users.map(u => (
-              <option key={u.uid} value={u.uid}>{u.displayName || u.email}</option>
+
+          <div className="flex flex-wrap items-center gap-3 py-2 border-t border-slate-50 mt-1">
+            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider mr-2">Trạng thái:</span>
+            {STATUS_OPTIONS.map((status) => (
+              <label 
+                key={status.id}
+                className={cn(
+                  "flex items-center gap-2 px-3 py-1.5 rounded-full cursor-pointer transition-all border",
+                  selectedStatuses.includes(status.id)
+                    ? "bg-indigo-50 border-indigo-200 text-indigo-700 shadow-sm"
+                    : "bg-white border-slate-200 text-slate-500 hover:border-slate-300"
+                )}
+              >
+                <input 
+                  type="checkbox" 
+                  className="hidden"
+                  checked={selectedStatuses.includes(status.id)}
+                  onChange={() => toggleStatus(status.id)}
+                />
+                <div className={cn("w-2 h-2 rounded-full", status.color)} />
+                <span className="text-sm font-medium">{status.label}</span>
+              </label>
             ))}
-          </select>
+            {selectedStatuses.length > 0 && (
+              <button 
+                onClick={() => updateParams({ status: null })}
+                className="text-xs text-indigo-600 font-bold hover:underline ml-auto"
+              >
+                Xóa lọc
+              </button>
+            )}
+          </div>
         </div>
         <div className="flex flex-wrap items-center gap-3 pt-3 border-t border-slate-50">
           <div className="flex items-center gap-2">
