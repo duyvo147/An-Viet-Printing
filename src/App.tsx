@@ -726,6 +726,8 @@ const PrintModal = ({ order, type, onClose, printConfig }: { order: Order, type:
 
 const OrderList = ({ orders, onEdit, onDelete, title = 'Quản lý đơn hàng', userRole, users = [], onPrint }: { orders: Order[], onEdit: (o: Order) => void, onDelete?: (id: string) => void, title?: string, userRole?: string, users?: UserProfile[], onPrint: (order: Order, type: 'quote' | 'delivery' | 'payment_request') => void }) => {
   const [searchParams, setSearchParams] = useSearchParams();
+  const [hoveredOrder, setHoveredOrder] = useState<Order | null>(null);
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   
   const filter = searchParams.get('q') || '';
   const statusFilter = (searchParams.get('status') as OrderStatus | 'all') || 'all';
@@ -908,7 +910,18 @@ const OrderList = ({ orders, onEdit, onDelete, title = 'Quản lý đơn hàng',
             </thead>
             <tbody className="divide-y divide-slate-100">
               {filteredOrders.map(order => (
-                <tr key={order.id} className="hover:bg-slate-50 transition-colors group">
+                <tr 
+                  key={order.id} 
+                  className="hover:bg-slate-50 transition-colors group cursor-default"
+                  onMouseEnter={(e) => {
+                    setHoveredOrder(order);
+                    setMousePos({ x: e.clientX, y: e.clientY });
+                  }}
+                  onMouseMove={(e) => {
+                    setMousePos({ x: e.clientX, y: e.clientY });
+                  }}
+                  onMouseLeave={() => setHoveredOrder(null)}
+                >
                   <td className="px-6 py-4">
                     <p className="font-bold text-slate-900">{order.customerName}</p>
                     <p className="text-xs text-indigo-600 font-mono font-bold">{order.orderCode || `AVP-OLD-${order.id.slice(-4).toUpperCase()}`}</p>
@@ -1010,6 +1023,48 @@ const OrderList = ({ orders, onEdit, onDelete, title = 'Quản lý đơn hàng',
           </table>
         </div>
       </div>
+
+      {/* Quick View Tooltip */}
+      <AnimatePresence>
+        {hoveredOrder && (
+          <motion.div
+            initial={{ opacity: 0, y: 10, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 10, scale: 0.95 }}
+            style={{ 
+              position: 'fixed',
+              left: mousePos.x + 20,
+              top: mousePos.y + 20,
+              zIndex: 100,
+              pointerEvents: 'none'
+            }}
+            className="bg-slate-800/80 backdrop-blur-md text-white p-4 rounded-2xl shadow-2xl border border-white/20 min-w-[300px] max-w-[400px]"
+          >
+            <div className="flex justify-between items-center mb-3 pb-2 border-b border-white/10">
+              <p className="text-[10px] font-black text-indigo-300 uppercase tracking-widest">Sản phẩm trong đơn {hoveredOrder.orderCode}</p>
+              <span className="text-[10px] bg-indigo-500/30 text-indigo-200 px-2 py-0.5 rounded-full font-bold">{hoveredOrder.items.length} hạng mục</span>
+            </div>
+            <div className="space-y-3">
+              {hoveredOrder.items.slice(0, 8).map((item, idx) => (
+                <div key={idx} className="flex justify-between items-center gap-4 group/item">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate text-slate-100">{item.name}</p>
+                  </div>
+                  <div className="shrink-0 flex items-center gap-1.5 bg-white/5 px-2 py-0.5 rounded-lg border border-white/5">
+                    <span className="text-xs font-black text-indigo-400">{item.quantity}</span>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">{item.unit}</span>
+                  </div>
+                </div>
+              ))}
+              {hoveredOrder.items.length > 8 && (
+                <p className="text-[10px] text-slate-500 italic text-center pt-2 border-t border-white/5">
+                  Và {hoveredOrder.items.length - 8} sản phẩm khác...
+                </p>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
