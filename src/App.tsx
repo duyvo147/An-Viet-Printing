@@ -1050,17 +1050,17 @@ const OrderList = ({ orders, onEdit, onDelete, title = 'Quản lý đơn hàng',
                   }}
                   onMouseLeave={() => setHoveredOrder(null)}
                 >
-                  <td className="px-6 py-4 min-w-[200px]">
-                    <p className="font-bold text-slate-900 whitespace-nowrap truncate max-w-[250px]">{order.customerName}</p>
-                    <p className="text-xs text-indigo-600 font-mono font-bold mt-1 whitespace-nowrap">{order.orderCode || `AVP-OLD-${order.id.slice(-4).toUpperCase()}`}</p>
+                  <td className="px-6 py-5 min-w-[320px]">
+                    <p className="font-bold text-slate-900 whitespace-nowrap truncate max-w-[450px] text-sm">{order.customerName}</p>
+                    <p className="text-[11px] text-indigo-600 font-mono font-bold mt-1.5 whitespace-nowrap opacity-70">{order.orderCode || `AVP-OLD-${order.id.slice(-4).toUpperCase()}`}</p>
                   </td>
                   {userRole !== 'production' && (
                     <>
-                      <td className="px-6 py-4 text-sm text-slate-600 font-mono whitespace-nowrap">{order.vatInvoiceCode || '-'}</td>
-                      <td className="px-6 py-4 font-semibold text-slate-900 whitespace-nowrap">{formatCurrency(order.totalAmount)}</td>
+                      <td className="px-6 py-5 text-sm text-slate-600 font-mono whitespace-nowrap">{order.vatInvoiceCode || '-'}</td>
+                      <td className="px-6 py-5 font-bold text-slate-900 whitespace-nowrap">{formatCurrency(order.totalAmount)}</td>
                     </>
                   )}
-                  <td className="px-6 py-4">
+                  <td className="px-6 py-5">
                     <span className={cn(
                       "text-xs font-bold px-2 py-1 rounded-full whitespace-nowrap",
                       order.status === 'completed' ? "bg-emerald-50 text-emerald-600" :
@@ -1075,7 +1075,7 @@ const OrderList = ({ orders, onEdit, onDelete, title = 'Quản lý đơn hàng',
                     </span>
                   </td>
                   {userRole !== 'production' && (
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-5">
                       <span className={cn(
                         "text-xs font-bold px-2 py-1 rounded-full whitespace-nowrap",
                         order.paymentStatus === 'paid' ? "bg-emerald-50 text-emerald-600" :
@@ -1086,7 +1086,7 @@ const OrderList = ({ orders, onEdit, onDelete, title = 'Quản lý đơn hàng',
                       </span>
                     </td>
                   )}
-                  <td className="px-6 py-4">
+                  <td className="px-6 py-5">
                     <div className="flex items-center gap-2">
                       <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center border border-slate-200">
                         <UserIcon className="w-3 h-3 text-slate-400" />
@@ -1096,8 +1096,8 @@ const OrderList = ({ orders, onEdit, onDelete, title = 'Quản lý đơn hàng',
                       </span>
                     </div>
                   </td>
-                  <td className="px-6 py-4 text-sm text-slate-500">{format(order.createdAt.toDate(), 'dd/MM/yyyy')}</td>
-                  <td className="px-6 py-4 text-right">
+                  <td className="px-6 py-5 text-sm text-slate-500">{format(order.createdAt.toDate(), 'dd/MM/yyyy')}</td>
+                  <td className="px-6 py-5 text-right">
                     <div className="flex items-center justify-end gap-2">
                        {userRole !== 'production' && (
                         <>
