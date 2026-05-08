@@ -684,8 +684,11 @@ const PrintModal = ({ order, type, onClose, printConfig }: { order: Order, type:
                 </table>
 
                 {type === 'quote' && (
-                  <div className="flex justify-end items-end mb-12">
-                    <div className="w-80 space-y-3">
+                  <div className="flex flex-col items-end mb-12">
+                    {order.vatRate === 0 && (
+                      <p className="text-sm font-bold text-slate-600 mb-4 italic">* Đơn giá trên chưa bao gồm thuế VAT</p>
+                    )}
+                    <div className="w-80 space-y-3 text-right">
                       <div className="flex justify-between text-slate-900 font-bold">
                         <span>Tạm tính:</span>
                         <span>{formatCurrency(order.subTotal)}</span>
