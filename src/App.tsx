@@ -543,6 +543,7 @@ const Dashboard = ({ orders, supplierOrders, userRole, users = [] }: { orders: O
 
 const PrintModal = ({ order, type, onClose, printConfig }: { order: Order, type: 'quote' | 'delivery' | 'payment_request', onClose: () => void, printConfig?: PrintConfig }) => {
   const [itemNotes, setItemNotes] = useState<string[]>(order.items.map(() => ''));
+  const [printDate, setPrintDate] = useState<Date>(new Date());
 
   const handlePrint = () => {
     window.print();
@@ -585,7 +586,19 @@ const PrintModal = ({ order, type, onClose, printConfig }: { order: Order, type:
                   {type === 'quote' ? 'BÁO GIÁ' : type === 'delivery' ? 'PHIẾU GIAO HÀNG' : 'PHIẾU ĐỀ NGHỊ THANH TOÁN'}
                 </h1>
                 <p className="text-slate-900 font-mono font-bold">{order.orderCode || `AVP-OLD-${order.id.slice(-4).toUpperCase()}`}</p>
-                <p className="text-slate-700 text-sm mt-1 font-bold">Ngày: {format(new Date(), 'dd/MM/yyyy')}</p>
+                <div className="space-y-1">
+                  <p className="text-slate-700 text-sm mt-1 font-bold whitespace-nowrap">Ngày: {format(printDate, 'dd/MM/yyyy')}</p>
+                  {/* Date Selector - Hidden in print */}
+                  <div className="flex items-center gap-2 mt-2 print:hidden justify-end">
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Đổi ngày:</span>
+                    <input 
+                      type="date" 
+                      value={format(printDate, 'yyyy-MM-dd')}
+                      onChange={(e) => setPrintDate(new Date(e.target.value))}
+                      className="text-[11px] font-bold bg-slate-50 border-slate-200 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 p-1 cursor-pointer hover:bg-slate-100 transition-colors"
+                    />
+                  </div>
+                </div>
               </div>
             </div>
 
