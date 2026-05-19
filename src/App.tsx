@@ -544,6 +544,8 @@ const Dashboard = ({ orders, supplierOrders, userRole, users = [] }: { orders: O
 const PrintModal = ({ order, type, onClose, printConfig }: { order: Order, type: 'quote' | 'delivery' | 'payment_request', onClose: () => void, printConfig?: PrintConfig }) => {
   const [itemNotes, setItemNotes] = useState<string[]>(order.items.map(() => ''));
   const [printDate, setPrintDate] = useState<Date>(new Date());
+  const [editableTitle, setEditableTitle] = useState(type === 'quote' ? 'BÁO GIÁ' : type === 'delivery' ? 'PHIẾU GIAO HÀNG' : 'PHIẾU ĐỀ NGHỊ THANH TOÁN');
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
 
   const handlePrint = () => {
     window.print();
@@ -582,9 +584,24 @@ const PrintModal = ({ order, type, onClose, printConfig }: { order: Order, type:
                 </div>
               </div>
               <div className="text-right flex-shrink-0 ml-6">
-                <h1 className="text-2xl font-black text-orange-500 uppercase mb-2 whitespace-nowrap">
-                  {type === 'quote' ? 'BÁO GIÁ' : type === 'delivery' ? 'PHIẾU GIAO HÀNG' : 'PHIẾU ĐỀ NGHỊ THANH TOÁN'}
-                </h1>
+                {isEditingTitle ? (
+                  <input
+                    autoFocus
+                    type="text"
+                    value={editableTitle}
+                    onChange={(e) => setEditableTitle(e.target.value)}
+                    onBlur={() => setIsEditingTitle(false)}
+                    onKeyDown={(e) => e.key === 'Enter' && setIsEditingTitle(false)}
+                    className="text-2xl font-black text-orange-500 uppercase mb-2 whitespace-nowrap text-right bg-orange-50 border-none focus:ring-0 w-full p-0"
+                  />
+                ) : (
+                  <h1 
+                    onClick={() => setIsEditingTitle(true)}
+                    className="text-2xl font-black text-orange-500 uppercase mb-2 whitespace-nowrap cursor-pointer hover:bg-orange-50 transition-colors px-1 -mx-1 rounded"
+                  >
+                    {editableTitle}
+                  </h1>
+                )}
                 <p className="text-slate-900 font-mono font-bold">{order.orderCode || `AVP-OLD-${order.id.slice(-4).toUpperCase()}`}</p>
                 <div className="space-y-1">
                   <p className="text-slate-700 text-sm mt-1 font-bold whitespace-nowrap">Ngày: {format(printDate, 'dd/MM/yyyy')}</p>
