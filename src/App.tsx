@@ -883,10 +883,10 @@ const OrderList = ({ orders, onEdit, onDelete, title = 'Quản lý đơn hàng',
     setCurrentPage(1);
   }, [filter, statusFilterRaw, paymentFilterRaw, creatorFilterRaw, dateRange.start, dateRange.end]);
 
-  const totalPages = Math.ceil(filteredOrders.length / 20);
+  const totalPages = Math.ceil(filteredOrders.length / 10);
   const paginatedOrders = useMemo(() => {
-    const startIdx = (currentPage - 1) * 20;
-    return filteredOrders.slice(startIdx, startIdx + 20);
+    const startIdx = (currentPage - 1) * 10;
+    return filteredOrders.slice(startIdx, startIdx + 10);
   }, [filteredOrders, currentPage]);
 
   const pageNumbers = useMemo(() => {
@@ -940,281 +940,326 @@ const OrderList = ({ orders, onEdit, onDelete, title = 'Quản lý đơn hàng',
         )}
       </div>
 
-      <div className="sticky top-0 z-20 pb-4 -mx-2 px-2 bg-slate-50/80 backdrop-blur-md">
-        <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col gap-3">
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
-              <input 
-                type="text" 
-                placeholder="Tìm khách hàng hoặc mã đơn..." 
-                className="w-full pl-12 pr-6 py-3 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 transition-all font-bold text-base text-slate-700"
-                value={filter}
-                onChange={(e) => setFilter(e.target.value)}
-              />
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start">
+        {/* Cột trái: Bảng đơn hàng */}
+        <div className="lg:col-span-4 space-y-6">
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+            <div className="overflow-x-auto custom-scrollbar">
+              <table className="min-w-[1100px] w-full text-left">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-100">
+                    <th className="px-5 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Khách hàng</th>
+                    {userRole !== 'production' && (
+                      <>
+                        <th className="px-5 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Mã VAT</th>
+                        <th className="px-5 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Tổng tiền</th>
+                      </>
+                    )}
+                    <th className="px-5 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Trạng thái</th>
+                    {userRole !== 'production' && (
+                      <th className="px-5 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Thanh toán</th>
+                    )}
+                    <th className="px-5 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Người tạo</th>
+                    <th className="px-5 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Ngày tạo</th>
+                    <th className="px-5 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-right pr-6">Thao tác</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {paginatedOrders.map(order => (
+                    <tr 
+                      key={order.id} 
+                      className="hover:bg-slate-50 transition-colors group cursor-default"
+                      onMouseEnter={(e) => {
+                        setHoveredOrder(order);
+                        setMousePos({ x: e.clientX, y: e.clientY });
+                      }}
+                      onMouseMove={(e) => {
+                        setMousePos({ x: e.clientX, y: e.clientY });
+                      }}
+                      onMouseLeave={() => setHoveredOrder(null)}
+                    >
+                      <td className="px-5 py-4 min-w-[245px]">
+                        <p className="font-bold text-slate-900 whitespace-nowrap truncate max-w-[280px] text-sm" title={order.customerName}>{order.customerName}</p>
+                        <p className="text-[11px] text-indigo-600 font-mono font-bold mt-1.5 whitespace-nowrap opacity-70">{order.orderCode || `AVP-OLD-${order.id.slice(-4).toUpperCase()}`}</p>
+                      </td>
+                      {userRole !== 'production' && (
+                        <>
+                          <td className="px-5 py-4 text-sm text-slate-600 font-mono whitespace-nowrap">{order.vatInvoiceCode || '-'}</td>
+                          <td className="px-5 py-4 font-bold text-slate-900 whitespace-nowrap">{formatCurrency(order.totalAmount)}</td>
+                        </>
+                      )}
+                      <td className="px-5 py-4">
+                        <span className={cn(
+                          "text-xs font-bold px-2 py-1 rounded-full whitespace-nowrap",
+                          order.status === 'completed' ? "bg-emerald-50 text-emerald-600" :
+                          order.status === 'processing' ? "bg-indigo-50 text-indigo-600" :
+                          order.status === 'cancelled' ? "bg-rose-50 text-rose-600" : 
+                          order.status === 'quote' ? "bg-slate-100 text-slate-600" : "bg-amber-50 text-amber-600"
+                        )}>
+                          {order.status === 'quote' ? 'Báo giá' :
+                           order.status === 'pending' ? 'Chờ xử lý' : 
+                           order.status === 'processing' ? 'Đang in' : 
+                           order.status === 'completed' ? 'Hoàn thành' : 'Đã hủy'}
+                        </span>
+                      </td>
+                      {userRole !== 'production' && (
+                        <td className="px-5 py-4">
+                          <span className={cn(
+                            "text-xs font-bold px-2 py-1 rounded-full whitespace-nowrap",
+                            order.paymentStatus === 'paid' ? "bg-emerald-50 text-emerald-600" :
+                            order.paymentStatus === 'partial' ? "bg-amber-50 text-amber-600" : "bg-rose-50 text-rose-600"
+                          )}>
+                            {order.paymentStatus === 'paid' ? 'Đã trả' : 
+                             order.paymentStatus === 'partial' ? 'Trả một phần' : 'Chưa trả'}
+                          </span>
+                        </td>
+                      )}
+                      <td className="px-5 py-4">
+                        <div className="flex items-center gap-2">
+                          <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center border border-slate-200">
+                            <UserIcon className="w-3 h-3 text-slate-400" />
+                          </div>
+                          <span className="text-xs text-slate-600 font-medium truncate max-w-[120px]" title={getCreatorName(order.createdBy)}>
+                            {getCreatorName(order.createdBy)}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-5 py-4 text-sm text-slate-500">{format(order.createdAt.toDate(), 'dd/MM/yyyy')}</td>
+                      <td className="px-5 py-4 text-right whitespace-nowrap">
+                        <div className="flex items-center justify-end gap-2">
+                           {userRole !== 'production' && (
+                            <>
+                              <button 
+                                onClick={() => onPrint(order, 'quote')}
+                                title="In báo giá"
+                                className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
+                              >
+                                <Receipt className="w-4 h-4" />
+                              </button>
+                              <button 
+                                onClick={() => onPrint(order, 'delivery')}
+                                title="Phiếu giao hàng"
+                                className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all"
+                              >
+                                <Truck className="w-4 h-4" />
+                              </button>
+                              <button 
+                                onClick={() => onPrint(order, 'payment_request')}
+                                title="Đề nghị thanh toán"
+                                className="p-2 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-all"
+                              >
+                                <CreditCard className="w-4 h-4" />
+                              </button>
+                            </>
+                          )}
+                          <button 
+                            onClick={() => onEdit(order)}
+                            className="text-indigo-600 hover:text-indigo-800 font-medium text-sm transition-colors px-3 py-1 hover:bg-indigo-50 rounded-lg"
+                          >
+                            Chi tiết
+                          </button>
+                          {userRole === 'admin' && onDelete && (
+                            <button 
+                              onClick={() => {
+                                if (window.confirm('Bạn có chắc chắn muốn xóa đơn hàng này?')) {
+                                  onDelete(order.id);
+                                }
+                              }}
+                              title="Xóa đơn hàng"
+                              className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-            
-            <div className="flex items-center gap-3 bg-slate-50 px-4 py-2 rounded-xl border border-slate-100">
-              <Calendar className="w-5 h-5 text-slate-400" />
-              <input 
-                type="date" 
-                className="bg-transparent border-none text-sm font-black text-slate-700 focus:ring-0 p-1"
-                value={dateRange.start}
-                onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
-              />
-              <span className="text-slate-400 font-bold">→</span>
-              <input 
-                type="date" 
-                className="bg-transparent border-none text-sm font-black text-slate-700 focus:ring-0 p-1"
-                value={dateRange.end}
-                onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
-              />
-              {(dateRange.start || dateRange.end) && (
-                <button onClick={() => setDateRange({ start: '', end: '' })} className="text-slate-400 hover:text-rose-500 p-1">
-                  <X className="w-5 h-5" />
+          </div>
+        </div>
+
+        {/* Cột phải: Bộ lọc & Tìm kiếm (Sticky Sidebar) */}
+        <div className="lg:col-span-1 lg:sticky lg:top-4 z-10 space-y-4">
+          <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200/80 flex flex-col gap-5">
+            {/* Tiêu đề & Nút Reset bộ lọc */}
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <Filter className="w-4 h-4 text-slate-500" />
+                <h3 className="font-bold text-slate-900 text-sm tracking-tight">Bộ lọc & Tìm kiếm</h3>
+              </div>
+              {(dateRange.start || dateRange.end || selectedStatuses.length > 0 || selectedPayments.length > 0 || selectedCreators.length > 0 || filter) && (
+                <button 
+                  onClick={() => {
+                    setFilter('');
+                    setDateRange({ start: '', end: '' });
+                    updateParams({ status: null, payment: null, creator: null });
+                  }} 
+                  className="text-[10px] text-rose-500 font-extrabold hover:underline uppercase tracking-wider"
+                >
+                  Xóa bộ lọc
                 </button>
               )}
             </div>
 
-            {userRole !== 'production' && (
-              <button 
-                onClick={exportOrders}
-                className="px-6 py-3 bg-slate-900 text-white rounded-xl font-black text-base flex items-center gap-3 hover:bg-slate-800 transition-colors shrink-0"
-              >
-                <Download className="w-5 h-5" />
-                Xuất Excel
-              </button>
-            )}
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 pt-4 border-t border-slate-50">
-            {/* Nhóm Trạng thái */}
-            <div className="space-y-3">
-              <div className="flex justify-between items-center">
-                <span className="text-xs font-black text-slate-400 uppercase tracking-widest">Trạng thái đơn</span>
-                {selectedStatuses.length > 0 && (
-                  <button onClick={() => updateParams({ status: null })} className="text-xs text-indigo-500 font-black hover:underline uppercase">Xóa tất cả</button>
-                )}
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {STATUS_OPTIONS.map((status) => (
-                  <label 
-                    key={status.id}
-                    className={cn(
-                      "flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer transition-all border text-xs font-black whitespace-nowrap uppercase tracking-tight",
-                      selectedStatuses.includes(status.id)
-                        ? "bg-indigo-600 border-indigo-600 text-white shadow-md shadow-indigo-50"
-                        : "bg-white border-slate-200 text-slate-600 hover:border-indigo-200 hover:bg-indigo-50/30"
-                    )}
-                  >
-                    <input type="checkbox" className="hidden" checked={selectedStatuses.includes(status.id)} onChange={() => toggleStatus(status.id)} />
-                    {!selectedStatuses.includes(status.id) && <div className={cn("w-2 h-2 rounded-full", status.color)} />}
-                    <span>{status.label}</span>
-                  </label>
-                ))}
+            {/* Ô nhập tìm kiếm nhanh */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-black text-slate-400 uppercase tracking-widest">Tìm kiếm nhanh</label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
+                <input 
+                  type="text" 
+                  placeholder="Tên khách, mã đơn..." 
+                  className="w-full pl-9 pr-4 py-2 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 transition-all font-bold text-sm text-slate-700"
+                  value={filter}
+                  onChange={(e) => setFilter(e.target.value)}
+                />
               </div>
             </div>
 
-            {/* Nhóm Thanh toán */}
-            <div className="space-y-3 lg:border-l lg:pl-6 border-slate-100">
+            {/* Lọc ngày lập đơn */}
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <label className="text-xs font-black text-slate-400 uppercase tracking-widest">Thời gian tạo đơn</label>
+                {(dateRange.start || dateRange.end) && (
+                  <button onClick={() => setDateRange({ start: '', end: '' })} className="text-[10px] text-slate-400 hover:text-rose-500 font-bold uppercase">Xóa</button>
+                )}
+              </div>
+              <div className="flex flex-col gap-2">
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-400 uppercase">Từ</span>
+                  <input 
+                    type="date" 
+                    className="w-full pl-9 pr-3 py-1.5 bg-slate-50 border-none rounded-xl text-xs font-black text-slate-700 focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+                    value={dateRange.start}
+                    onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
+                  />
+                </div>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-400 uppercase">Đến</span>
+                  <input 
+                    type="date" 
+                    className="w-full pl-9 pr-3 py-1.5 bg-slate-50 border-none rounded-xl text-xs font-black text-slate-700 focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+                    value={dateRange.end}
+                    onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Nút xuất excel */}
+            {userRole !== 'production' && (
+              <button 
+                onClick={exportOrders}
+                className="w-full py-2.5 bg-slate-900 text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-slate-850 active:scale-[0.98] transition-all shadow-sm shrink-0"
+              >
+                <Download className="w-4 h-4" />
+                Xuất file Excel
+              </button>
+            )}
+
+            {/* Nhóm trạng thái */}
+            <div className="space-y-2 pt-2 border-t border-slate-100">
+              <div className="flex justify-between items-center">
+                <span className="text-xs font-black text-slate-400 uppercase tracking-widest">Trạng thái đơn</span>
+                {selectedStatuses.length > 0 && (
+                  <button onClick={() => updateParams({ status: null })} className="text-[10px] text-indigo-500 font-bold hover:underline uppercase">Xóa lọc</button>
+                )}
+              </div>
+              <div className="flex flex-col gap-1.5">
+                {STATUS_OPTIONS.map((status) => {
+                  const isActive = selectedStatuses.includes(status.id);
+                  return (
+                    <label 
+                      key={status.id}
+                      className={cn(
+                        "flex items-center gap-2 px-3 py-1.5 rounded-xl cursor-pointer transition-all border text-[11px] font-bold uppercase tracking-tight",
+                        isActive
+                          ? "bg-indigo-600 border-indigo-600 text-white shadow-sm shadow-indigo-100"
+                          : "bg-white border-slate-200 text-slate-600 hover:border-indigo-200 hover:bg-indigo-50/10"
+                      )}
+                    >
+                      <input type="checkbox" className="hidden" checked={isActive} onChange={() => toggleStatus(status.id)} />
+                      <div className={cn("w-1.5 h-1.5 rounded-full", isActive ? "bg-white" : status.color)} />
+                      <span className="truncate">{status.label}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Nhóm thanh toán */}
+            <div className="space-y-2 pt-2 border-t border-slate-100">
               <div className="flex justify-between items-center">
                 <span className="text-xs font-black text-slate-400 uppercase tracking-widest">Thanh toán</span>
                 {selectedPayments.length > 0 && (
-                  <button onClick={() => updateParams({ payment: null })} className="text-xs text-emerald-500 font-black hover:underline uppercase">Xóa tất cả</button>
+                  <button onClick={() => updateParams({ payment: null })} className="text-[10px] text-emerald-500 font-bold hover:underline uppercase">Xóa lọc</button>
                 )}
               </div>
-              <div className="flex flex-wrap gap-2">
-                {PAYMENT_OPTIONS.map((payment) => (
-                  <label 
-                    key={payment.id}
-                    className={cn(
-                      "flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer transition-all border text-xs font-black whitespace-nowrap uppercase tracking-tight",
-                      selectedPayments.includes(payment.id)
-                        ? "bg-emerald-600 border-emerald-600 text-white shadow-md shadow-emerald-50"
-                        : "bg-white border-slate-200 text-slate-600 hover:border-emerald-200 hover:bg-emerald-50/30"
-                    )}
-                  >
-                    <input type="checkbox" className="hidden" checked={selectedPayments.includes(payment.id)} onChange={() => togglePayment(payment.id)} />
-                    {!selectedPayments.includes(payment.id) && <div className={cn("w-2 h-2 rounded-full", payment.color)} />}
-                    <span>{payment.label}</span>
-                  </label>
-                ))}
+              <div className="flex flex-col gap-1.5">
+                {PAYMENT_OPTIONS.map((payment) => {
+                  const isActive = selectedPayments.includes(payment.id);
+                  return (
+                    <label 
+                      key={payment.id}
+                      className={cn(
+                        "flex items-center gap-2 px-3 py-1.5 rounded-xl cursor-pointer transition-all border text-[11px] font-bold uppercase tracking-tight",
+                        isActive
+                          ? "bg-emerald-600 border-emerald-600 text-white shadow-sm shadow-emerald-100"
+                          : "bg-white border-slate-200 text-slate-600 hover:border-emerald-200 hover:bg-emerald-50/10"
+                      )}
+                    >
+                      <input type="checkbox" className="hidden" checked={isActive} onChange={() => togglePayment(payment.id)} />
+                      <div className={cn("w-1.5 h-1.5 rounded-full", isActive ? "bg-white" : payment.color)} />
+                      <span className="truncate">{payment.label}</span>
+                    </label>
+                  );
+                })}
               </div>
             </div>
 
             {/* Nhóm Người tạo */}
-            <div className="space-y-3 lg:border-l lg:pl-6 border-slate-100">
+            <div className="space-y-2 pt-2 border-t border-slate-100">
               <div className="flex justify-between items-center">
                 <span className="text-xs font-black text-slate-400 uppercase tracking-widest">Người tạo đơn</span>
                 {selectedCreators.length > 0 && (
-                  <button onClick={() => updateParams({ creator: null })} className="text-xs text-amber-600 font-black hover:underline uppercase">Xóa tất cả</button>
+                  <button onClick={() => updateParams({ creator: null })} className="text-[10px] text-amber-600 font-bold hover:underline uppercase">Xóa lọc</button>
                 )}
               </div>
-              <div className="flex flex-wrap gap-2">
-                {users.map((user) => (
-                  <label 
-                    key={user.uid}
-                    className={cn(
-                      "flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer transition-all border text-xs font-black whitespace-nowrap tracking-tight uppercase",
-                      selectedCreators.includes(user.uid)
-                        ? "bg-amber-500 border-amber-500 text-white shadow-md shadow-amber-50"
-                        : "bg-white border-slate-200 text-slate-600 hover:border-amber-200 hover:bg-amber-50/30"
-                    )}
-                  >
-                    <input type="checkbox" className="hidden" checked={selectedCreators.includes(user.uid)} onChange={() => toggleCreator(user.uid)} />
-                    <div className="w-4 h-4 rounded-full bg-slate-200 flex items-center justify-center text-[8px] font-black text-slate-500 overflow-hidden shrink-0">
-                      {user.displayName ? user.displayName.slice(0, 1).toUpperCase() : user.email.slice(0, 1).toUpperCase()}
-                    </div>
-                    <span>{user.displayName || user.email.split('@')[0]}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {userRole !== 'production' && (title === 'Quản lý đơn hàng' || title === 'Quản lý công nợ') && (
-            <div className="flex justify-end items-center gap-2 pt-2 border-t border-slate-50">
-              <span className="text-[10px] font-black text-rose-400 uppercase tracking-wider">Tổng công nợ chưa thu:</span>
-              <span className="text-sm font-black text-rose-600">{formatCurrency(totalDebt)}</span>
-            </div>
-          )}
-        </div>
-      </div>
-
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-        <div className="overflow-x-auto custom-scrollbar">
-          <table className="w-full text-left">
-            <thead>
-              <tr className="bg-slate-50 border-b border-slate-100">
-                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Khách hàng</th>
-                {userRole !== 'production' && (
-                  <>
-                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Mã VAT</th>
-                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Tổng tiền</th>
-                  </>
-                )}
-                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Trạng thái</th>
-                {userRole !== 'production' && (
-                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Thanh toán</th>
-                )}
-                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Người tạo</th>
-                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Ngày tạo</th>
-                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-right pr-6">Thao tác</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {paginatedOrders.map(order => (
-                <tr 
-                  key={order.id} 
-                  className="hover:bg-slate-50 transition-colors group cursor-default"
-                  onMouseEnter={(e) => {
-                    setHoveredOrder(order);
-                    setMousePos({ x: e.clientX, y: e.clientY });
-                  }}
-                  onMouseMove={(e) => {
-                    setMousePos({ x: e.clientX, y: e.clientY });
-                  }}
-                  onMouseLeave={() => setHoveredOrder(null)}
-                >
-                  <td className="px-6 py-5 min-w-[240px]">
-                    <p className="font-bold text-slate-900 whitespace-nowrap truncate max-w-[280px] text-sm" title={order.customerName}>{order.customerName}</p>
-                    <p className="text-[11px] text-indigo-600 font-mono font-bold mt-1.5 whitespace-nowrap opacity-70">{order.orderCode || `AVP-OLD-${order.id.slice(-4).toUpperCase()}`}</p>
-                  </td>
-                  {userRole !== 'production' && (
-                    <>
-                      <td className="px-6 py-5 text-sm text-slate-600 font-mono whitespace-nowrap">{order.vatInvoiceCode || '-'}</td>
-                      <td className="px-6 py-5 font-bold text-slate-900 whitespace-nowrap">{formatCurrency(order.totalAmount)}</td>
-                    </>
-                  )}
-                  <td className="px-6 py-5">
-                    <span className={cn(
-                      "text-xs font-bold px-2 py-1 rounded-full whitespace-nowrap",
-                      order.status === 'completed' ? "bg-emerald-50 text-emerald-600" :
-                      order.status === 'processing' ? "bg-indigo-50 text-indigo-600" :
-                      order.status === 'cancelled' ? "bg-rose-50 text-rose-600" : 
-                      order.status === 'quote' ? "bg-slate-100 text-slate-600" : "bg-amber-50 text-amber-600"
-                    )}>
-                      {order.status === 'quote' ? 'Báo giá' :
-                       order.status === 'pending' ? 'Chờ xử lý' : 
-                       order.status === 'processing' ? 'Đang in' : 
-                       order.status === 'completed' ? 'Hoàn thành' : 'Đã hủy'}
-                    </span>
-                  </td>
-                  {userRole !== 'production' && (
-                    <td className="px-6 py-5">
-                      <span className={cn(
-                        "text-xs font-bold px-2 py-1 rounded-full whitespace-nowrap",
-                        order.paymentStatus === 'paid' ? "bg-emerald-50 text-emerald-600" :
-                        order.paymentStatus === 'partial' ? "bg-amber-50 text-amber-600" : "bg-rose-50 text-rose-600"
-                      )}>
-                        {order.paymentStatus === 'paid' ? 'Đã trả' : 
-                         order.paymentStatus === 'partial' ? 'Trả một phần' : 'Chưa trả'}
-                      </span>
-                    </td>
-                  )}
-                  <td className="px-6 py-5">
-                    <div className="flex items-center gap-2">
-                      <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center border border-slate-200">
-                        <UserIcon className="w-3 h-3 text-slate-400" />
+              <div className="flex flex-col gap-1.5 max-h-40 overflow-y-auto custom-scrollbar pr-1">
+                {users.map((user) => {
+                  const isActive = selectedCreators.includes(user.uid);
+                  return (
+                    <label 
+                      key={user.uid}
+                      className={cn(
+                        "flex items-center gap-2 px-3 py-1.5 rounded-xl cursor-pointer transition-all border text-[11px] font-bold uppercase tracking-tight",
+                        isActive
+                          ? "bg-amber-500 border-amber-500 text-white shadow-sm shadow-amber-100"
+                          : "bg-white border-slate-200 text-slate-600 hover:border-amber-200 hover:bg-amber-50/10"
+                      )}
+                    >
+                      <input type="checkbox" className="hidden" checked={isActive} onChange={() => toggleCreator(user.uid)} />
+                      <div className="w-4 h-4 rounded-full bg-slate-200 flex items-center justify-center text-[8px] font-black text-slate-500 overflow-hidden shrink-0">
+                        {user.displayName ? user.displayName.slice(0, 1).toUpperCase() : user.email.slice(0, 1).toUpperCase()}
                       </div>
-                      <span className="text-xs text-slate-600 font-medium truncate max-w-[120px]" title={getCreatorName(order.createdBy)}>
-                        {getCreatorName(order.createdBy)}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-5 text-sm text-slate-500">{format(order.createdAt.toDate(), 'dd/MM/yyyy')}</td>
-                  <td className="px-6 py-5 text-right whitespace-nowrap">
-                    <div className="flex items-center justify-end gap-2">
-                       {userRole !== 'production' && (
-                        <>
-                          <button 
-                            onClick={() => onPrint(order, 'quote')}
-                            title="In báo giá"
-                            className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
-                          >
-                            <Receipt className="w-4 h-4" />
-                          </button>
-                          <button 
-                            onClick={() => onPrint(order, 'delivery')}
-                            title="Phiếu giao hàng"
-                            className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all"
-                          >
-                            <Truck className="w-4 h-4" />
-                          </button>
-                          <button 
-                            onClick={() => onPrint(order, 'payment_request')}
-                            title="Đề nghị thanh toán"
-                            className="p-2 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-all"
-                          >
-                            <CreditCard className="w-4 h-4" />
-                          </button>
-                        </>
-                      )}
-                      <button 
-                        onClick={() => onEdit(order)}
-                        className="text-indigo-600 hover:text-indigo-800 font-medium text-sm transition-colors px-3 py-1 hover:bg-indigo-50 rounded-lg"
-                      >
-                        Chi tiết
-                      </button>
-                      {userRole === 'admin' && onDelete && (
-                        <button 
-                          onClick={() => {
-                            if (window.confirm('Bạn có chắc chắn muốn xóa đơn hàng này?')) {
-                              onDelete(order.id);
-                            }
-                          }}
-                          title="Xóa đơn hàng"
-                          className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                      <span className="truncate">{user.displayName || user.email.split('@')[0]}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Thống kê Tổng công nợ chưa thu */}
+            {userRole !== 'production' && (title === 'Quản lý đơn hàng' || title === 'Quản lý công nợ') && (
+              <div className="pt-3 border-t-2 border-dashed border-slate-100 flex flex-col gap-1">
+                <span className="text-[10px] font-black text-rose-400 uppercase tracking-wider">Tổng công nợ chưa thu:</span>
+                <span className="text-lg font-black text-rose-600 tracking-tight">{formatCurrency(totalDebt)}</span>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -1222,7 +1267,7 @@ const OrderList = ({ orders, onEdit, onDelete, title = 'Quản lý đơn hàng',
       {totalPages > 1 && (
         <div className="bg-white px-6 py-4 rounded-2xl border border-slate-100 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="text-sm font-bold text-slate-500">
-            Hiển thị <span className="text-slate-900">{(currentPage - 1) * 20 + 1}-{Math.min(currentPage * 20, filteredOrders.length)}</span> trong tổng số <span className="text-slate-900">{filteredOrders.length}</span> đơn hàng
+            Hiển thị <span className="text-slate-900">{(currentPage - 1) * 10 + 1}-{Math.min(currentPage * 10, filteredOrders.length)}</span> trong tổng số <span className="text-slate-900">{filteredOrders.length}</span> đơn hàng
           </div>
           <div className="flex items-center gap-1.5 overflow-x-auto max-w-full py-1">
             <button
