@@ -1051,7 +1051,7 @@ const OrderList = ({ orders, onEdit, onDelete, title = 'Quản lý đơn hàng',
       </div>
 
       <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto custom-scrollbar">
           <table className="w-full text-left">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-100">
@@ -1068,7 +1068,7 @@ const OrderList = ({ orders, onEdit, onDelete, title = 'Quản lý đơn hàng',
                 )}
                 <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Người tạo</th>
                 <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Ngày tạo</th>
-                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider"></th>
+                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-right pr-6">Thao tác</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -1085,8 +1085,8 @@ const OrderList = ({ orders, onEdit, onDelete, title = 'Quản lý đơn hàng',
                   }}
                   onMouseLeave={() => setHoveredOrder(null)}
                 >
-                  <td className="px-6 py-5 min-w-[320px]">
-                    <p className="font-bold text-slate-900 whitespace-nowrap truncate max-w-[450px] text-sm">{order.customerName}</p>
+                  <td className="px-6 py-5 min-w-[240px]">
+                    <p className="font-bold text-slate-900 whitespace-nowrap truncate max-w-[280px] text-sm" title={order.customerName}>{order.customerName}</p>
                     <p className="text-[11px] text-indigo-600 font-mono font-bold mt-1.5 whitespace-nowrap opacity-70">{order.orderCode || `AVP-OLD-${order.id.slice(-4).toUpperCase()}`}</p>
                   </td>
                   {userRole !== 'production' && (
@@ -1132,7 +1132,7 @@ const OrderList = ({ orders, onEdit, onDelete, title = 'Quản lý đơn hàng',
                     </div>
                   </td>
                   <td className="px-6 py-5 text-sm text-slate-500">{format(order.createdAt.toDate(), 'dd/MM/yyyy')}</td>
-                  <td className="px-6 py-5 text-right">
+                  <td className="px-6 py-5 text-right whitespace-nowrap">
                     <div className="flex items-center justify-end gap-2">
                        {userRole !== 'production' && (
                         <>
