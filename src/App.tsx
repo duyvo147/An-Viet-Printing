@@ -22,6 +22,7 @@ import {
   Search, 
   Filter, 
   ChevronRight, 
+  ChevronLeft, 
   AlertCircle,
   TrendingUp,
   DollarSign,
@@ -762,6 +763,7 @@ const OrderList = ({ orders, onEdit, onDelete, title = 'Quản lý đơn hàng',
   const [searchParams, setSearchParams] = useSearchParams();
   const [hoveredOrder, setHoveredOrder] = useState<Order | null>(null);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+  const [currentPage, setCurrentPage] = useState(1);
   
   const filter = searchParams.get('q') || '';
   const statusFilterRaw = searchParams.get('status') || '';
@@ -875,6 +877,35 @@ const OrderList = ({ orders, onEdit, onDelete, title = 'Quản lý đơn hàng',
   }, [filteredOrders]);
 
   const incompleteOrdersCount = orders.filter(o => o.status !== 'completed' && o.status !== 'cancelled').length;
+
+  // Reset page relative to filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filter, statusFilterRaw, paymentFilterRaw, creatorFilterRaw, dateRange.start, dateRange.end]);
+
+  const totalPages = Math.ceil(filteredOrders.length / 20);
+  const paginatedOrders = useMemo(() => {
+    const startIdx = (currentPage - 1) * 20;
+    return filteredOrders.slice(startIdx, startIdx + 20);
+  }, [filteredOrders, currentPage]);
+
+  const pageNumbers = useMemo(() => {
+    const pages: (number | string)[] = [];
+    if (totalPages <= 5) {
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i);
+      }
+    } else {
+      if (currentPage <= 3) {
+        pages.push(1, 2, 3, 4, '...', totalPages);
+      } else if (currentPage >= totalPages - 2) {
+        pages.push(1, '...', totalPages - 3, totalPages - 2, totalPages - 1, totalPages);
+      } else {
+        pages.push(1, '...', currentPage - 1, currentPage, currentPage + 1, '...', totalPages);
+      }
+    }
+    return pages;
+  }, [currentPage, totalPages]);
 
   const exportOrders = () => {
     const wsData = filteredOrders.map(o => ({
@@ -1072,7 +1103,7 @@ const OrderList = ({ orders, onEdit, onDelete, title = 'Quản lý đơn hàng',
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {filteredOrders.map(order => (
+              {paginatedOrders.map(order => (
                 <tr 
                   key={order.id} 
                   className="hover:bg-slate-50 transition-colors group cursor-default"
@@ -1186,6 +1217,54 @@ const OrderList = ({ orders, onEdit, onDelete, title = 'Quản lý đơn hàng',
           </table>
         </div>
       </div>
+
+      {/* Pagination Component */}
+      {totalPages > 1 && (
+        <div className="bg-white px-6 py-4 rounded-2xl border border-slate-100 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="text-sm font-bold text-slate-500">
+            Hiển thị <span className="text-slate-900">{(currentPage - 1) * 20 + 1}-{Math.min(currentPage * 20, filteredOrders.length)}</span> trong tổng số <span className="text-slate-900">{filteredOrders.length}</span> đơn hàng
+          </div>
+          <div className="flex items-center gap-1.5 overflow-x-auto max-w-full py-1">
+            <button
+              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+              disabled={currentPage === 1}
+              className="p-2 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300 disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:border-slate-200 transition-all cursor-pointer disabled:cursor-not-allowed shrink-0"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            {pageNumbers.map((page, idx) => {
+              if (page === '...') {
+                return (
+                  <span key={`ellipsis-${idx}`} className="px-3 py-1.5 text-slate-400 font-bold shrink-0 select-none">
+                    ...
+                  </span>
+                );
+              }
+              return (
+                <button
+                  key={`page-${page}`}
+                  onClick={() => setCurrentPage(Number(page))}
+                  className={cn(
+                    "min-w-10 h-10 px-3 rounded-xl font-bold transition-all border text-sm cursor-pointer shrink-0",
+                    currentPage === page
+                      ? "bg-indigo-600 border-indigo-600 text-white shadow-md shadow-indigo-100"
+                      : "bg-white border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50"
+                  )}
+                >
+                  {page}
+                </button>
+              );
+            })}
+            <button
+              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+              disabled={currentPage === totalPages}
+              className="p-2 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300 disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:border-slate-200 transition-all cursor-pointer disabled:cursor-not-allowed shrink-0"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Quick View Tooltip */}
       <AnimatePresence>
