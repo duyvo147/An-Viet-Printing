@@ -766,6 +766,13 @@ const OrderList = ({ orders, onEdit, onDelete, title = 'Quản lý đơn hàng',
   const [currentPage, setCurrentPage] = useState(1);
   
   const filter = searchParams.get('q') || '';
+  const [localFilter, setLocalFilter] = useState(filter);
+
+  // Synchronize local filter state when searchParams.get('q') changes externally (like clear button)
+  useEffect(() => {
+    setLocalFilter(filter);
+  }, [filter]);
+
   const statusFilterRaw = searchParams.get('status') || '';
   const selectedStatuses = statusFilterRaw ? statusFilterRaw.split(',') : [];
   
@@ -839,6 +846,16 @@ const OrderList = ({ orders, onEdit, onDelete, title = 'Quản lý đơn hàng',
 
   const setFilter = (val: string) => updateParams({ q: val });
   const setDateRange = (range: { start: string, end: string }) => updateParams({ start: range.start, end: range.end });
+
+  // Debounced effect to update search URL param
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (localFilter !== filter) {
+        setFilter(localFilter);
+      }
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [localFilter, filter]);
 
   const getCreatorName = (uid: string) => {
     const creator = users.find(u => u.uid === uid);
@@ -1113,8 +1130,8 @@ const OrderList = ({ orders, onEdit, onDelete, title = 'Quản lý đơn hàng',
                   type="text" 
                   placeholder="Tên khách, mã đơn..." 
                   className="w-full pl-9 pr-4 py-2 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 transition-all font-bold text-sm text-slate-700"
-                  value={filter}
-                  onChange={(e) => setFilter(e.target.value)}
+                  value={localFilter}
+                  onChange={(e) => setLocalFilter(e.target.value)}
                 />
               </div>
             </div>
@@ -1809,6 +1826,13 @@ const SupplierOrderList = ({ orders, onEdit, onDelete, userRole, users = [] }: {
   const [searchParams, setSearchParams] = useSearchParams();
   
   const filter = searchParams.get('q') || '';
+  const [localFilter, setLocalFilter] = useState(filter);
+
+  // Synchronize local filter state when searchParams.get('q') changes externally (like clear button)
+  useEffect(() => {
+    setLocalFilter(filter);
+  }, [filter]);
+
   const statusFilter = (searchParams.get('status') as SupplierOrderStatus | 'all') || 'all';
   const typeFilter = (searchParams.get('type') as MaterialType | 'all') || 'all';
   const dateRange = {
@@ -1833,6 +1857,16 @@ const SupplierOrderList = ({ orders, onEdit, onDelete, userRole, users = [] }: {
   const setStatusFilter = (val: string) => updateParams({ status: val });
   const setTypeFilter = (val: string) => updateParams({ type: val });
   const setDateRange = (range: { start: string, end: string }) => updateParams({ start: range.start, end: range.end });
+
+  // Debounced effect to update search URL param
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (localFilter !== filter) {
+        setFilter(localFilter);
+      }
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [localFilter, filter]);
 
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const navigate = useNavigate();
@@ -1888,8 +1922,8 @@ const SupplierOrderList = ({ orders, onEdit, onDelete, userRole, users = [] }: {
               type="text" 
               placeholder="Tìm theo tên nhà cung cấp hoặc nội dung..." 
               className="w-full pl-10 pr-4 py-2 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 transition-all"
-              value={filter}
-              onChange={(e) => setFilter(e.target.value)}
+              value={localFilter}
+              onChange={(e) => setLocalFilter(e.target.value)}
             />
           </div>
           <select 
