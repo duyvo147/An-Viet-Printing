@@ -622,7 +622,7 @@ const PrintModal = ({ order, type, onClose, printConfig }: { order: Order, type:
 
             {type !== 'payment_request' && (
               <div className="mb-10 space-y-1 text-slate-900">
-                <p className="text-lg"><span className="font-medium">Khách hàng:</span> <span className="font-black">{order.customerName}</span></p>
+                <p className="text-lg"><span className="font-medium">Khách hàng:</span> <span className="font-black">{order.customerName}{type === 'delivery' && order.customerPhone ? ` - SĐT: ${order.customerPhone}` : ''}</span></p>
                 {order.customerAddress && <p className="text-lg"><span className="font-medium">Địa chỉ:</span> <span className="font-bold">{order.customerAddress}</span></p>}
                 {order.customerTaxId && <p className="text-lg"><span className="font-medium">MST:</span> <span className="font-bold">{order.customerTaxId}</span></p>}
                 {type === 'delivery' && order.vatInvoiceCode && <p className="text-lg"><span className="font-medium">HĐ VAT:</span> <span className="font-bold">{order.vatInvoiceCode}</span></p>}
