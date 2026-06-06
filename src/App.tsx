@@ -1360,21 +1360,24 @@ const OrderList = ({ orders, onEdit, onDelete, title = 'Quản lý đơn hàng',
             initial={{ opacity: 0, y: 100, scale: 0.8 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 100, scale: 0.8 }}
-            className="fixed bottom-6 right-6 z-50 pointer-events-auto"
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            className="fixed bottom-4 right-4 z-50 pointer-events-auto"
           >
             <div 
               onClick={() => updateParams({ status: 'quote,pending,processing' })}
-              className="bg-slate-900 text-white px-6 py-4 rounded-3xl shadow-2xl border border-white/10 flex items-center gap-4 group hover:bg-slate-800 transition-all cursor-pointer"
+              className="bg-slate-900 text-white px-4 py-2.5 rounded-2xl shadow-2xl border border-white/10 flex items-center gap-2.5 group hover:bg-slate-800 transition-all cursor-pointer"
+              title="Nhấp để lọc các đơn chưa hoàn tất"
             >
-              <div className="w-12 h-12 bg-amber-500/20 rounded-2xl flex items-center justify-center">
-                <AlertCircle className="w-6 h-6 text-amber-500 animate-pulse" />
+              <div className="w-8 h-8 bg-amber-500/20 rounded-xl flex items-center justify-center shrink-0">
+                <AlertCircle className="w-4 h-4 text-amber-500 animate-pulse" />
               </div>
-              <div>
-                <p className="text-xl font-black tabular-nums">{incompleteOrdersCount}</p>
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Đơn chưa hoàn tất</p>
-              </div>
-              <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                 <div className="w-1 h-1 bg-white rounded-full animate-bounce" />
+              <div className="leading-tight">
+                <p className="text-sm font-black tabular-nums flex items-baseline gap-1">
+                  <span>{incompleteOrdersCount}</span>
+                  <span className="text-[9px] font-bold text-slate-400 lowercase">đơn</span>
+                </p>
+                <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Chưa hoàn tất</p>
               </div>
             </div>
           </motion.div>
