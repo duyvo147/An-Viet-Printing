@@ -760,7 +760,7 @@ const PrintModal = ({ order, type, onClose, printConfig }: { order: Order, type:
   );
 };
 
-const OrderList = ({ orders, onEdit, onDelete, title = 'Quản lý đơn hàng', userRole, users = [], onPrint, onCopy }: { orders: Order[], onEdit: (o: Order) => void, onDelete?: (id: string) => void, title?: string, userRole?: string, users?: UserProfile[], onPrint: (order: Order, type: 'quote' | 'delivery' | 'payment_request') => void, onCopy?: (o: Order) => void }) => {
+const OrderList = ({ orders, onEdit, onDelete, title = 'Quản lý đơn hàng', userRole, users = [], onPrint }: { orders: Order[], onEdit: (o: Order) => void, onDelete?: (id: string) => void, title?: string, userRole?: string, users?: UserProfile[], onPrint: (order: Order, type: 'quote' | 'delivery' | 'payment_request') => void }) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [hoveredOrder, setHoveredOrder] = useState<Order | null>(null);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
@@ -1068,15 +1068,6 @@ const OrderList = ({ orders, onEdit, onDelete, title = 'Quản lý đơn hàng',
                               >
                                 <CreditCard className="w-4 h-4" />
                               </button>
-                              {onCopy && (
-                                <button 
-                                  onClick={() => onCopy(order)}
-                                  title="Sao chép đơn hàng (Tái bản)"
-                                  className="p-2 text-slate-400 hover:text-cyan-600 hover:bg-cyan-50 rounded-lg transition-all"
-                                >
-                                  <Copy className="w-4 h-4" />
-                                </button>
-                              )}
                             </>
                           )}
                           <button 
@@ -1414,7 +1405,7 @@ const OrderList = ({ orders, onEdit, onDelete, title = 'Quản lý đơn hàng',
   );
 };
 
-const OrderForm = ({ initialOrder, orders = [], onSave, onCancel, userRole, onPrint }: { initialOrder?: Order, orders?: Order[], onSave: (o: any) => void, onCancel: () => void, userRole?: string, onPrint: (order: Order, type: 'quote' | 'delivery' | 'payment_request') => void }) => {
+const OrderForm = ({ initialOrder, orders = [], onSave, onCancel, userRole, onPrint, onCopy }: { initialOrder?: Order, orders?: Order[], onSave: (o: any) => void, onCancel: () => void, userRole?: string, onPrint: (order: Order, type: 'quote' | 'delivery' | 'payment_request') => void, onCopy?: (order: Order) => void }) => {
   const isProduction = userRole === 'production';
   const isAdmin = userRole === 'admin';
   const isCompletedAndPaid = initialOrder?.status === 'completed' && initialOrder?.paymentStatus === 'paid';
@@ -1493,6 +1484,17 @@ const OrderForm = ({ initialOrder, orders = [], onSave, onCancel, userRole, onPr
         <div className="flex items-center gap-2">
           {initialOrder && !isProduction && (
             <>
+              {onCopy && (
+                <button 
+                  type="button"
+                  onClick={() => onCopy(initialOrder)}
+                  className="p-2 text-slate-400 hover:text-cyan-600 hover:bg-cyan-50 rounded-xl transition-all flex items-center gap-2 px-3 border border-slate-100 bg-slate-50 hover:border-cyan-100"
+                  title="Sao chép đơn hàng này (Tái bản)"
+                >
+                  <Copy className="w-5 h-5 text-cyan-500" />
+                  <span className="text-sm font-bold text-slate-700">Sao chép đơn</span>
+                </button>
+              )}
               <button 
                 type="button"
                 onClick={() => onPrint(initialOrder, 'quote')}
@@ -4046,7 +4048,6 @@ export default function App() {
                     userRole={profile?.role}
                     users={users}
                     onPrint={(order, type) => setPrintOrder({ order, type })}
-                    onCopy={(o) => { setCopiedOrder(o); navigate('/orders/new'); }}
                   />
                 } />
                 <Route path="/orders/new" element={
@@ -4073,7 +4074,15 @@ export default function App() {
                   />
                 } />
                 <Route path="/orders/edit" element={
-                  <OrderForm orders={orders} initialOrder={editingOrder || undefined} onSave={handleSaveOrder} onCancel={() => navigate(-1)} userRole={profile?.role} onPrint={(order, type) => setPrintOrder({ order, type })} />
+                  <OrderForm 
+                    orders={orders} 
+                    initialOrder={editingOrder || undefined} 
+                    onSave={handleSaveOrder} 
+                    onCancel={() => navigate(-1)} 
+                    userRole={profile?.role} 
+                    onPrint={(order, type) => setPrintOrder({ order, type })} 
+                    onCopy={(o) => { setCopiedOrder(o); navigate('/orders/new'); }}
+                  />
                 } />
                 <Route path="/payment-request" element={
                   profile?.role === 'production' ? <Navigate to="/orders" /> :
