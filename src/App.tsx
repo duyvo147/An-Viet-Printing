@@ -4053,6 +4053,7 @@ export default function App() {
                 <Route path="/orders/new" element={
                   profile?.role === 'production' ? <Navigate to="/orders" /> :
                   <OrderForm 
+                    key={copiedOrder ? `copy-${copiedOrder.id}` : 'new-order'}
                     orders={orders} 
                     initialOrder={copiedOrder ? {
                       ...copiedOrder,
@@ -4075,6 +4076,7 @@ export default function App() {
                 } />
                 <Route path="/orders/edit" element={
                   <OrderForm 
+                    key={editingOrder ? `edit-${editingOrder.id}` : 'edit-order'}
                     orders={orders} 
                     initialOrder={editingOrder || undefined} 
                     onSave={handleSaveOrder} 
