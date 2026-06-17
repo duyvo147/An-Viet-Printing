@@ -35,7 +35,8 @@ import {
   Truck,
   Trash2,
   Calculator,
-  Settings
+  Settings,
+  Copy
 } from 'lucide-react';
 import { 
   BarChart, 
@@ -759,7 +760,7 @@ const PrintModal = ({ order, type, onClose, printConfig }: { order: Order, type:
   );
 };
 
-const OrderList = ({ orders, onEdit, onDelete, title = 'Quản lý đơn hàng', userRole, users = [], onPrint }: { orders: Order[], onEdit: (o: Order) => void, onDelete?: (id: string) => void, title?: string, userRole?: string, users?: UserProfile[], onPrint: (order: Order, type: 'quote' | 'delivery' | 'payment_request') => void }) => {
+const OrderList = ({ orders, onEdit, onDelete, title = 'Quản lý đơn hàng', userRole, users = [], onPrint, onCopy }: { orders: Order[], onEdit: (o: Order) => void, onDelete?: (id: string) => void, title?: string, userRole?: string, users?: UserProfile[], onPrint: (order: Order, type: 'quote' | 'delivery' | 'payment_request') => void, onCopy?: (o: Order) => void }) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [hoveredOrder, setHoveredOrder] = useState<Order | null>(null);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
@@ -1067,6 +1068,15 @@ const OrderList = ({ orders, onEdit, onDelete, title = 'Quản lý đơn hàng',
                               >
                                 <CreditCard className="w-4 h-4" />
                               </button>
+                              {onCopy && (
+                                <button 
+                                  onClick={() => onCopy(order)}
+                                  title="Sao chép đơn hàng (Tái bản)"
+                                  className="p-2 text-slate-400 hover:text-cyan-600 hover:bg-cyan-50 rounded-lg transition-all"
+                                >
+                                  <Copy className="w-4 h-4" />
+                                </button>
+                              )}
                             </>
                           )}
                           <button 
@@ -3490,6 +3500,7 @@ export default function App() {
   const [logs, setLogs] = useState<ActivityLog[]>([]);
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
+  const [copiedOrder, setCopiedOrder] = useState<Order | null>(null);
   const [editingSupplierOrder, setEditingSupplierOrder] = useState<SupplierOrder | null>(null);
   const [isSidebarOpen, setSidebarOpen] = useState(true);
   const [isCalculatorOpen, setCalculatorOpen] = useState(false);
@@ -3507,6 +3518,9 @@ export default function App() {
     if (!location.pathname.includes('/edit')) {
       setEditingOrder(null);
       setEditingSupplierOrder(null);
+    }
+    if (location.pathname !== '/orders/new') {
+      setCopiedOrder(null);
     }
   }, [location.pathname]);
 
@@ -4032,11 +4046,31 @@ export default function App() {
                     userRole={profile?.role}
                     users={users}
                     onPrint={(order, type) => setPrintOrder({ order, type })}
+                    onCopy={(o) => { setCopiedOrder(o); navigate('/orders/new'); }}
                   />
                 } />
                 <Route path="/orders/new" element={
                   profile?.role === 'production' ? <Navigate to="/orders" /> :
-                  <OrderForm orders={orders} onSave={handleSaveOrder} onCancel={() => navigate(-1)} userRole={profile?.role} onPrint={(order, type) => setPrintOrder({ order, type })} />
+                  <OrderForm 
+                    orders={orders} 
+                    initialOrder={copiedOrder ? {
+                      ...copiedOrder,
+                      status: 'quote',
+                      paymentStatus: 'unpaid',
+                      paidAmount: 0,
+                      vatInvoiceCode: '',
+                    } as any : undefined}
+                    onSave={(data) => {
+                      handleSaveOrder(data);
+                      setCopiedOrder(null);
+                    }} 
+                    onCancel={() => {
+                      setCopiedOrder(null);
+                      navigate(-1);
+                    }} 
+                    userRole={profile?.role} 
+                    onPrint={(order, type) => setPrintOrder({ order, type })} 
+                  />
                 } />
                 <Route path="/orders/edit" element={
                   <OrderForm orders={orders} initialOrder={editingOrder || undefined} onSave={handleSaveOrder} onCancel={() => navigate(-1)} userRole={profile?.role} onPrint={(order, type) => setPrintOrder({ order, type })} />
