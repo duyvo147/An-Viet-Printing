@@ -548,6 +548,8 @@ const PrintModal = ({ order, type, onClose, printConfig }: { order: Order, type:
   const [printDate, setPrintDate] = useState<Date>(new Date());
   const [editableTitle, setEditableTitle] = useState(type === 'quote' ? 'BÁO GIÁ' : type === 'delivery' ? 'PHIẾU GIAO HÀNG' : 'PHIẾU ĐỀ NGHỊ THANH TOÁN');
   const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [vatInvoiceCode, setVatInvoiceCode] = useState(order.vatInvoiceCode || '');
+  const [vatInvoiceDate, setVatInvoiceDate] = useState(order.vatInvoiceDate || '');
 
   const handlePrint = () => {
     window.print();
@@ -626,7 +628,83 @@ const PrintModal = ({ order, type, onClose, printConfig }: { order: Order, type:
                 <p className="text-lg"><span className="font-medium">Khách hàng:</span> <span className="font-black">{order.customerName}{type === 'delivery' && order.customerPhone ? ` - SĐT: ${order.customerPhone}` : ''}</span></p>
                 {order.customerAddress && <p className="text-lg"><span className="font-medium">Địa chỉ:</span> <span className="font-bold">{order.customerAddress}</span></p>}
                 {order.customerTaxId && <p className="text-lg"><span className="font-medium">MST:</span> <span className="font-bold">{order.customerTaxId}</span></p>}
-                {type === 'delivery' && order.vatInvoiceCode && <p className="text-lg"><span className="font-medium">HĐ VAT:</span> <span className="font-bold">{order.vatInvoiceCode}</span></p>}
+                {type === 'delivery' && (
+                  <>
+                    {(vatInvoiceCode || vatInvoiceDate) && (
+                      <p className="text-lg">
+                        {vatInvoiceCode && (
+                          <span>
+                            <span className="font-medium">Số hóa đơn VAT:</span> <span className="font-bold">{vatInvoiceCode}</span>
+                          </span>
+                        )}
+                        {vatInvoiceDate && (
+                          <span className={vatInvoiceCode ? "ml-8" : ""}>
+                            <span className="font-medium">Ngày xuất hóa đơn:</span>{' '}
+                            <span className="font-bold">
+                              {(() => {
+                                try {
+                                  if (/^\d{4}-\d{2}-\d{2}$/.test(vatInvoiceDate)) {
+                                    const [y, m, d] = vatInvoiceDate.split('-');
+                                    return `${d}/${m}/${y}`;
+                                  }
+                                  return vatInvoiceDate;
+                                } catch {
+                                  return vatInvoiceDate;
+                                }
+                              })()}
+                            </span>
+                          </span>
+                        )}
+                      </p>
+                    )}
+
+                    {/* Section to input vatInvoiceCode & vatInvoiceDate - Hidden during print */}
+                    <div className="mt-3 p-4 bg-slate-50 border border-slate-200 rounded-2xl print:hidden max-w-md space-y-3">
+                      <div className="space-y-1">
+                        <label className="block text-xs font-bold text-slate-700">Mã hóa đơn VAT</label>
+                        <input 
+                          type="text" 
+                          value={vatInvoiceCode} 
+                          onChange={(e) => setVatInvoiceCode(e.target.value)}
+                          placeholder="Nhập mã hóa đơn VAT..."
+                          className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-sm font-bold font-mono focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <div className="flex justify-between items-center">
+                          <label className="block text-xs font-bold text-slate-700">Ngày xuất hóa đơn VAT</label>
+                          <div className="flex items-center gap-2">
+                            <button 
+                              type="button" 
+                              onClick={() => setVatInvoiceDate(format(new Date(), 'yyyy-MM-dd'))}
+                              className="text-[11px] font-bold text-indigo-600 hover:underline"
+                            >
+                              Hôm nay
+                            </button>
+                            {vatInvoiceDate && (
+                              <>
+                                <span className="text-slate-300 text-xs">|</span>
+                                <button 
+                                  type="button" 
+                                  onClick={() => setVatInvoiceDate('')}
+                                  className="text-[11px] font-bold text-rose-500 hover:underline"
+                                >
+                                  Xóa ngày
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                        <input 
+                          type="date" 
+                          value={vatInvoiceDate} 
+                          onChange={(e) => setVatInvoiceDate(e.target.value)}
+                          className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-sm font-bold focus:ring-2 focus:ring-indigo-500 focus:outline-none cursor-pointer"
+                        />
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
             )}
 
